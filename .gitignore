@@ -1,7 +1,9 @@
 node_modules/
-dist/
 out/
+dist/
 release/
+coverage/
+test-results/
 *.log
 .env
 .env.*
@@ -9,3 +11,4 @@ release/
 Thumbs.db
 .vscode/
 .idea/
+*.tsbuildinfo
