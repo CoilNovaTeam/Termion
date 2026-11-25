@@ -1,0 +1,1906 @@
+<!doctype html>
+<html lang="ru" data-theme="graphite">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Termion — макет интерфейса</title>
+<style>
+/* ============ Темы ============ */
+html[data-theme="graphite"]{color-scheme:dark;
+  --bg-app:#131518;--bg-title:#0f1114;--bg-panel:#171a1e;--bg-panel-2:#1d2126;--bg-hover:#22272d;--bg-active:#25313d;--bg-input:#111316;
+  --border:#23272d;--border-strong:#333a43;--text:#e3e7eb;--text-dim:#a2abb5;--text-faint:#6b7480;
+  --accent:#3fb6a8;--accent-strong:#62d2c4;--accent-soft:rgba(63,182,168,.15);--on-accent:#06201d;
+  --ok:#4cc38a;--warn:#e2b55a;--err:#ef6b73;
+  --c-green:#7fcf8e;--c-blue:#73a9ff;--c-yellow:#e0b85a;--c-purple:#c792ea;--c-red:#ef8a8a;--c-folder:#d4a656;
+  --term-bg:#0e1013;--term-fg:#d6dce2;--term-dim:#6d7782;--t-green:#7fcf8e;--t-blue:#73a9ff;--t-yellow:#e6c07b;--t-red:#ef6b73;--t-cyan:#5fd0c4;--t-magenta:#c792ea;--cursor:#3fb6a8;--sel:rgba(63,182,168,.3);
+  --e-bg:#111317;--e-fg:#d6dce2;--e-gutter:#4a535d;--e-kw:#c792ea;--e-str:#9fd39a;--e-com:#626c77;--e-key:#73a9ff;--e-var:#e6c07b;--e-num:#f2a66b;
+  --row-h:28px;--radius:7px;--shadow:0 16px 48px rgba(0,0,0,.5);--tab-h:38px;
+}
+html[data-theme="classic"]{color-scheme:light;
+  --bg-app:#d5dbe2;--bg-title:#c9d0d8;--bg-panel:#eef1f4;--bg-panel-2:#e3e8ed;--bg-hover:#dae2ea;--bg-active:#c6daf2;--bg-input:#ffffff;
+  --border:#c0c8d1;--border-strong:#a9b4c0;--text:#1b222a;--text-dim:#4d5966;--text-faint:#7b8692;
+  --accent:#2b6cd4;--accent-strong:#1f5bb8;--accent-soft:rgba(43,108,212,.13);--on-accent:#ffffff;
+  --ok:#2f9e5b;--warn:#b98100;--err:#d03b3b;
+  --c-green:#2f9e5b;--c-blue:#2b6cd4;--c-yellow:#b98100;--c-purple:#8e44c9;--c-red:#d03b3b;--c-folder:#e2a11b;
+  --term-bg:#1e1e1e;--term-fg:#ececec;--term-dim:#8a9099;--t-green:#6fd16f;--t-blue:#72aaff;--t-yellow:#f0c674;--t-red:#ff6b6b;--t-cyan:#56d4dd;--t-magenta:#d28ef0;--cursor:#b4b4c0;--sel:rgba(114,170,255,.32);
+  --e-bg:#ffffff;--e-fg:#1f2328;--e-gutter:#9aa4af;--e-kw:#a626a4;--e-str:#2e7d32;--e-com:#8b949e;--e-key:#1f5bb8;--e-var:#b35900;--e-num:#b35900;
+  --row-h:24px;--radius:4px;--shadow:0 10px 30px rgba(20,30,45,.25);--tab-h:32px;
+}
+html[data-theme="light"]{color-scheme:light;
+  --bg-app:#f3f4f7;--bg-title:#eceef2;--bg-panel:#fafbfc;--bg-panel-2:#f0f2f6;--bg-hover:#eceff4;--bg-active:#e4e9fe;--bg-input:#ffffff;
+  --border:#e1e5eb;--border-strong:#cfd5de;--text:#1d2330;--text-dim:#5a6374;--text-faint:#939cab;
+  --accent:#5b5ce6;--accent-strong:#4748cf;--accent-soft:rgba(91,92,230,.12);--on-accent:#ffffff;
+  --ok:#1f9d63;--warn:#b7791f;--err:#d0394a;
+  --c-green:#1f9d63;--c-blue:#3461d1;--c-yellow:#b7791f;--c-purple:#8e44c9;--c-red:#d0394a;--c-folder:#e3a23c;
+  --term-bg:#ffffff;--term-fg:#262b36;--term-dim:#8b93a1;--t-green:#1f8f52;--t-blue:#3461d1;--t-yellow:#a86b00;--t-red:#d0394a;--t-cyan:#0f8585;--t-magenta:#8e44c9;--cursor:#5b5ce6;--sel:rgba(91,92,230,.2);
+  --e-bg:#ffffff;--e-fg:#262b36;--e-gutter:#a7afbb;--e-kw:#8e44c9;--e-str:#1f8f52;--e-com:#98a1ae;--e-key:#3461d1;--e-var:#a86b00;--e-num:#b5532a;
+  --row-h:30px;--radius:8px;--shadow:0 16px 40px rgba(30,40,70,.16);--tab-h:40px;
+}
+
+/* ============ База ============ */
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg-app)}
+body{color:var(--text);font:13px/1.4 "Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+.mono{font-family:"Cascadia Mono","Cascadia Code",Consolas,"Courier New",monospace}
+.ic{width:16px;height:16px;flex:none;display:block}
+kbd{font:10.5px "Cascadia Mono",Consolas,monospace;padding:1px 5px;border-radius:4px;border:1px solid var(--border-strong);color:var(--text-faint);background:var(--bg-panel-2);white-space:nowrap}
+::selection{background:var(--sel)}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:6px;border:3px solid transparent;background-clip:content-box}
+::-webkit-scrollbar-thumb:hover{background-color:var(--text-faint)}
+::-webkit-scrollbar-track,::-webkit-scrollbar-corner{background:transparent}
+
+/* ============ Раскладки ============ */
+.app{position:fixed;inset:0;display:grid;background:var(--bg-app);
+  --tool-h:0px;--rail-w:0px;--left-w:272px;--right-w:0px;
+  grid-template-rows:34px var(--tool-h) minmax(0,1fr) minmax(0,1.15fr) 24px;
+  grid-template-columns:var(--rail-w) var(--left-w) minmax(0,1fr) var(--right-w)}
+.app[data-layout="stacked"]{grid-template-areas:"title title title title" "tool tool tool tool" ". s main ." ". f main ." "status status status status"}
+.app[data-layout="ide"]{--left-w:250px;--right-w:290px;grid-template-areas:"title title title title" "tool tool tool tool" ". s main f" ". s main f" "status status status status"}
+.app[data-layout="classic"]{--tool-h:56px;--rail-w:42px;--left-w:270px;grid-template-areas:"title title title title" "tool tool tool tool" "rail s main ." "rail s main ." "status status status status"}
+.titlebar{grid-area:title}.toolbar{grid-area:tool}.rail{grid-area:rail}.sessions{grid-area:s}.files{grid-area:f}.workspace{grid-area:main}.status{grid-area:status}
+.app[data-layout="classic"] .files{grid-area:s}
+.app[data-layout="classic"][data-side="sessions"] .files,.app[data-layout="classic"][data-side="files"] .sessions{display:none}
+.app:not([data-layout="classic"]) .toolbar,.app:not([data-layout="classic"]) .rail{display:none}
+
+/* ============ Заголовок окна ============ */
+.titlebar{display:flex;align-items:center;gap:12px;padding-left:12px;background:var(--bg-title);border-bottom:1px solid var(--border);user-select:none;min-width:0}
+.brand{display:flex;align-items:center;gap:8px;font-weight:600;white-space:nowrap}
+.brand-name{font-size:13px;letter-spacing:.02em}
+.logo{flex:none;display:block}
+.search-trigger{display:flex;align-items:center;gap:8px;height:24px;width:min(360px,28vw);padding:0 5px 0 9px;margin-left:22px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-input);color:var(--text-faint);font-size:12px}
+.search-trigger span{flex:1;text-align:left}
+.search-trigger:hover{border-color:var(--border-strong)}
+.mock{margin-left:auto;display:flex;align-items:center;gap:6px;padding:2px 3px 2px 9px;border:1px dashed var(--border-strong);border-radius:8px}
+.mock-label{font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--accent)}
+.seg{display:flex;background:var(--bg-panel-2);border:1px solid var(--border);border-radius:6px;padding:2px;gap:2px}
+.seg button{display:flex;align-items:center;gap:6px;border:0;background:none;padding:0 8px;height:20px;border-radius:4px;font-size:11.5px;color:var(--text-dim);white-space:nowrap}
+.seg button:hover{color:var(--text)}
+.seg button.on{background:var(--accent);color:var(--on-accent)}
+.winctl{display:flex;height:100%}
+.winctl button{width:44px;height:100%;border:0;background:none;color:var(--text-dim);display:grid;place-items:center}
+.winctl button:hover{background:var(--bg-hover)}
+.winctl .close:hover{background:#e81123;color:#fff}
+.winctl .ic{width:14px;height:14px}
+
+/* ============ «Классика»: панель кнопок и полоса слева ============ */
+.toolbar{display:flex;align-items:stretch;gap:2px;padding:4px 8px;background:var(--bg-panel-2);border-bottom:1px solid var(--border)}
+.tb{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:76px;padding:0 8px;border:1px solid transparent;border-radius:var(--radius);background:none;font-size:11.5px;color:var(--text)}
+.tb .ic{width:20px;height:20px;color:var(--accent)}
+.tb:hover,.tb.on{background:var(--bg-hover);border-color:var(--border)}
+.tb-sep{width:1px;background:var(--border);margin:6px 4px}
+.rail{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 0;background:var(--bg-panel-2);border-right:1px solid var(--border)}
+.rail-btn{position:relative;width:32px;height:32px;display:grid;place-items:center;border:0;border-radius:var(--radius);background:none;color:var(--text-dim)}
+.rail-btn:hover{background:var(--bg-hover);color:var(--text)}
+.rail-btn.on{background:var(--accent-soft);color:var(--accent)}
+.rail-btn.on::before{content:"";position:absolute;left:-5px;top:7px;bottom:7px;width:3px;border-radius:2px;background:var(--accent)}
+.rail-btn .badge{position:absolute;top:5px;right:5px;width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 2px var(--bg-panel-2);display:none}
+.rail-btn .badge.on{display:block}
+.rail .spacer{flex:1}
+
+/* ============ Панели ============ */
+.panel{display:flex;flex-direction:column;min-height:0;min-width:0;background:var(--bg-panel)}
+.app[data-layout="stacked"] .panel{border-right:1px solid var(--border)}
+.app[data-layout="stacked"] .files{border-top:1px solid var(--border)}
+.app[data-layout="ide"] .sessions{border-right:1px solid var(--border)}
+.app[data-layout="ide"] .files{border-left:1px solid var(--border)}
+.app[data-layout="classic"] .panel{border-right:1px solid var(--border)}
+.panel-head{display:flex;align-items:center;gap:7px;height:36px;padding:0 6px 0 12px;flex:none;min-width:0}
+.ph-title{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-faint);white-space:nowrap}
+.panel.focused .ph-title{color:var(--text-dim)}
+.ph-count{font-size:11px;color:var(--text-faint)}
+.ph-chip{display:inline-flex;align-items:center;gap:6px;height:20px;padding:0 8px;border-radius:10px;background:var(--accent-soft);color:var(--accent);font-size:11.5px;font-weight:600;min-width:0;overflow:hidden;white-space:nowrap}
+.ph-chip span{overflow:hidden;text-overflow:ellipsis}
+.ph-chip i{width:6px;height:6px;border-radius:50%;background:var(--ok);flex:none}
+.ph-chip.off{background:var(--bg-panel-2);color:var(--text-faint)}
+.ph-chip.off i{background:var(--text-faint)}
+.ph-actions{margin-left:auto;display:flex;gap:1px;flex:none}
+.icon-btn{width:26px;height:26px;display:grid;place-items:center;border:0;border-radius:calc(var(--radius) - 1px);background:none;color:var(--text-dim);flex:none}
+.icon-btn:hover{background:var(--bg-hover);color:var(--text)}
+.icon-btn.on{color:var(--accent);background:var(--accent-soft)}
+.search{display:flex;align-items:center;gap:7px;margin:0 8px 6px;padding:0 8px;height:28px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-input);color:var(--text-faint);flex:none;cursor:text}
+.search input{flex:1;min-width:0;border:0;outline:0;background:none;color:var(--text);font-size:12.5px}
+.search:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.tree{flex:1;overflow:auto;padding:2px 6px 12px;min-height:0}
+.row{position:relative;display:flex;align-items:center;gap:6px;height:var(--row-h);padding:0 8px 0 calc(4px + var(--d,0) * 16px);border-radius:calc(var(--radius) - 1px);white-space:nowrap;color:var(--text);user-select:none;cursor:default}
+.row:hover{background:var(--bg-hover)}
+.row.selected{background:var(--bg-active)}
+.row .chev{width:14px;height:14px;color:var(--text-faint);flex:none;transition:transform .12s}
+.row .chev .ic{width:14px;height:14px}
+.row.open>.chev{transform:rotate(90deg)}
+.row .ri{position:relative;display:grid;place-items:center;color:var(--text-dim);flex:none}
+.row .ri.live{color:var(--accent)}
+.row .rn{overflow:hidden;text-overflow:ellipsis;min-width:0}
+.row .cnt,.row .meta{margin-left:auto;padding-left:10px;font-size:11px;color:var(--text-faint);flex:none}
+.row.sess .meta,.row.ffile .meta{opacity:0;transition:opacity .12s}
+.row.sess:hover .meta,.row.sess.selected .meta,.row.ffile:hover .meta{opacity:1}
+.row.opened .rn{color:var(--accent);font-weight:600}
+.sdot{position:absolute;right:-3px;bottom:-2px;width:7px;height:7px;border-radius:50%;box-shadow:0 0 0 2px var(--bg-panel);display:none}
+.sdot.on{display:block;background:var(--ok)}
+.row:hover .sdot{box-shadow:0 0 0 2px var(--bg-hover)}
+.row.selected .sdot{box-shadow:0 0 0 2px var(--bg-active)}
+.fi-folder{color:var(--c-folder)!important}
+.fi-sh,.fi-nginx{color:var(--c-green)!important}.fi-py,.fi-md{color:var(--c-blue)!important}.fi-yaml,.fi-css{color:var(--c-purple)!important}
+.fi-env{color:var(--c-yellow)!important}.fi-html{color:var(--c-red)!important}.fi-log,.fi-bin{color:var(--text-faint)!important}.fi-txt{color:var(--text-dim)!important}
+mark{background:var(--accent-soft);color:var(--accent);border-radius:3px;padding:0 1px}
+.inline-input{flex:1;min-width:0;height:calc(var(--row-h) - 6px);border:1px solid var(--accent);border-radius:4px;background:var(--bg-input);outline:none;padding:0 6px;font-size:12.5px;box-shadow:0 0 0 3px var(--accent-soft)}
+.pathbar{display:flex;align-items:center;gap:3px;padding:0 6px 6px 8px;flex:none}
+.crumbs{flex:1;min-width:0;display:flex;align-items:center;overflow:hidden;height:26px;padding:0 6px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-input);font-size:12px;white-space:nowrap}
+.crumb{border:0;background:none;padding:0 2px;color:var(--text-dim);border-radius:3px}
+.crumb:hover{color:var(--accent)}
+.crumb.last{color:var(--text);font-weight:600}
+.crumbs .sep{color:var(--text-faint);padding:0 1px}
+.empty-panel{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:24px;text-align:center;color:var(--text-faint);font-size:12.5px}
+.empty-panel .ic{width:28px;height:28px}
+.empty-panel p{margin:0;max-width:200px}
+.empty-small{padding:18px 10px;color:var(--text-faint);text-align:center;font-size:12px}
+
+/* ============ Вкладки ============ */
+.workspace{display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--bg-app)}
+.tabs{display:flex;align-items:flex-end;gap:2px;height:var(--tab-h);padding:0 8px 0 6px;background:var(--bg-panel-2);border-bottom:1px solid var(--border);overflow-x:auto;overflow-y:hidden;flex:none}
+.tabs::-webkit-scrollbar{height:0}
+.tab{position:relative;display:flex;align-items:center;gap:7px;height:calc(var(--tab-h) - 6px);padding:0 5px 0 11px;border:1px solid transparent;border-bottom:0;border-radius:var(--radius) var(--radius) 0 0;color:var(--text-dim);white-space:nowrap;max-width:240px;user-select:none;cursor:default;flex:none}
+.tab:hover{background:var(--bg-hover);color:var(--text)}
+.tab.active{height:calc(var(--tab-h) - 5px);margin-bottom:-1px;border-color:var(--border)}
+.tab.active.is-term{background:var(--term-bg);color:var(--term-fg)}
+.tab.active.is-file{background:var(--e-bg);color:var(--e-fg)}
+.tab.active::before{content:"";position:absolute;left:-1px;right:-1px;top:-1px;height:2px;background:var(--accent);border-radius:2px 2px 0 0}
+.tab-ic{position:relative;display:grid;place-items:center}
+.tab-ic i{position:absolute;right:-3px;bottom:-2px;width:7px;height:7px;border-radius:50%;background:var(--text-faint);box-shadow:0 0 0 2px var(--bg-panel-2)}
+.tab-ic i.ok{background:var(--ok)}
+.tab.active.is-term .tab-ic i{box-shadow:0 0 0 2px var(--term-bg)}
+.tab-name{overflow:hidden;text-overflow:ellipsis}
+.tab-sub{font-size:11px;opacity:.55}
+.tab-x{width:20px;height:20px;display:grid;place-items:center;border:0;border-radius:4px;background:none;color:inherit;opacity:0}
+.tab:hover .tab-x,.tab.active .tab-x{opacity:.6}
+.tab-x:hover{opacity:1!important;background:rgba(127,127,127,.22)}
+.tab-x .ic{width:12px;height:12px}
+.tab-dirty{width:20px;height:20px;display:grid;place-items:center;color:var(--accent);font-size:15px;line-height:1;border-radius:4px}
+.tab-dirty:hover{background:rgba(127,127,127,.22)}
+.tab-add{align-self:center;width:26px;height:26px;display:grid;place-items:center;border:0;border-radius:var(--radius);background:none;color:var(--text-faint);margin-left:2px;flex:none}
+.tab-add:hover{background:var(--bg-hover);color:var(--text)}
+
+/* ============ Терминал ============ */
+.pane{position:relative;flex:1;min-height:0;background:var(--term-bg)}
+.term{position:absolute;inset:0;overflow:auto;padding:12px 16px 18px;color:var(--term-fg);font:13.5px/1.5 "Cascadia Mono","Cascadia Code",Consolas,monospace;white-space:pre-wrap;word-break:break-word;cursor:text}
+.term .ln{min-height:1.5em}
+.cur{display:inline-block;width:.6em;height:1.2em;vertical-align:-.22em;background:var(--cursor);animation:blink 1.1s steps(1) infinite}
+.term.blur .cur{background:transparent;box-shadow:inset 0 0 0 1px var(--cursor);animation:none}
+@keyframes blink{50%{opacity:0}}
+.t-green{color:var(--t-green)}.t-blue{color:var(--t-blue)}.t-yellow{color:var(--t-yellow)}.t-red{color:var(--t-red)}.t-cyan{color:var(--t-cyan)}.t-magenta{color:var(--t-magenta)}
+.b{font-weight:700}.dim{color:var(--term-dim)}
+
+/* ============ Редактор ============ */
+.editor{position:absolute;inset:0;display:flex;flex-direction:column;background:var(--e-bg)}
+.ed-bar{display:flex;align-items:center;gap:10px;height:40px;padding:0 10px 0 14px;border-bottom:1px solid var(--border);background:var(--bg-panel);flex:none;min-width:0}
+.ed-path{display:flex;align-items:center;gap:8px;min-width:0;color:var(--text);font-size:12.5px}
+.ed-path .mono{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ed-on{color:var(--text-faint);white-space:nowrap}
+.ed-actions{margin-left:auto;display:flex;align-items:center;gap:6px;flex:none}
+.ed-lang{font-size:11.5px;color:var(--text-faint);padding:0 6px}
+.ed-body{flex:1;overflow:auto;display:flex;align-items:flex-start;font:13px/1.6 "Cascadia Mono","Cascadia Code",Consolas,monospace}
+.gutter{flex:none;position:sticky;left:0;padding:12px 12px 60px 14px;min-width:50px;text-align:right;white-space:pre;color:var(--e-gutter);background:var(--e-bg);user-select:none}
+.code{flex:1;margin:0;padding:12px 24px 60px 8px;outline:none;color:var(--e-fg);white-space:pre;tab-size:4;caret-color:var(--accent);min-height:100%;font:inherit}
+.k{color:var(--e-kw)}.s{color:var(--e-str)}.c{color:var(--e-com);font-style:italic}.y{color:var(--e-key)}.v{color:var(--e-var)}.n{color:var(--e-num)}.h{color:var(--e-key);font-weight:700}
+.lg-err{color:var(--err)}.lg-warn{color:var(--warn)}.lg-info{color:var(--e-key)}
+
+/* ============ Пустая область ============ */
+.empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:var(--bg-app);color:var(--text-dim);text-align:center;padding:20px}
+.empty h2{margin:4px 0 0;font-size:20px;color:var(--text);font-weight:600;letter-spacing:.01em}
+.empty p{margin:0}
+.empty-actions{display:flex;gap:8px;margin-top:6px}
+.empty-keys{display:flex;gap:16px;margin-top:10px;font-size:12px;color:var(--text-faint)}
+
+/* ============ Кнопки ============ */
+.btn{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border:1px solid var(--border-strong);border-radius:var(--radius);background:var(--bg-panel);color:var(--text);font-size:12.5px;white-space:nowrap}
+.btn:hover{background:var(--bg-hover)}
+.btn .ic{width:14px;height:14px}
+.btn.sm{height:26px;padding:0 9px;font-size:12px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn.primary:hover{background:var(--accent-strong);border-color:var(--accent-strong)}
+.btn.danger{background:var(--err);border-color:var(--err);color:#fff}
+.btn.danger-text{color:var(--err)}
+.btn:disabled{opacity:.45;cursor:default}
+.btn:disabled:hover{background:var(--bg-panel)}
+.btn.primary:disabled:hover{background:var(--accent)}
+.btn kbd{background:transparent;border-color:currentColor;color:inherit;opacity:.7}
+
+/* ============ Макросы ============ */
+.macros{display:flex;align-items:center;gap:6px;height:44px;padding:0 10px;border-top:1px solid var(--border);background:var(--bg-panel);overflow-x:auto;overflow-y:hidden;flex:none}
+.macros::-webkit-scrollbar{height:0}
+.mac-label{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-faint);padding-right:6px;white-space:nowrap}
+.mac-label .ic{color:var(--accent);width:14px;height:14px}
+.chip{display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 11px 0 9px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-panel-2);color:var(--text);white-space:nowrap;font-size:12.5px;flex:none}
+.chip:hover{border-color:var(--accent);background:var(--accent-soft)}
+.chip>.ic{width:11px;height:11px;color:var(--accent)}
+.chip .scope{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text-faint);padding-left:7px;margin-left:1px;border-left:1px solid var(--border)}
+.chip .scope .ic{width:11px;height:11px}
+.chip.running{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.chip[data-off]{opacity:.5}
+.chip-add{border-style:dashed;background:none;color:var(--text-dim)}
+.chip-add>.ic{color:var(--text-dim)}
+
+/* ============ Строка состояния ============ */
+.status{display:flex;align-items:center;gap:14px;padding:0 12px;background:var(--bg-title);border-top:1px solid var(--border);color:var(--text-dim);font-size:11.5px;white-space:nowrap;overflow:hidden;min-width:0}
+.st{display:inline-flex;align-items:center;gap:6px}
+.st .ic{width:13px;height:13px}
+.st-dot{width:7px;height:7px;border-radius:50%;background:var(--ok);display:inline-block}
+.st-dot.off{background:var(--text-faint)}
+.st-warn{color:var(--warn)}
+.st-right{margin-left:auto;display:flex;gap:14px}
+
+/* ============ Меню, окна, уведомления ============ */
+.ctx{position:fixed;z-index:50;min-width:220px;padding:5px;border:1px solid var(--border-strong);border-radius:calc(var(--radius) + 2px);background:var(--bg-panel);box-shadow:var(--shadow);animation:pop .1s ease-out}
+.ctx-item{display:flex;align-items:center;gap:9px;width:100%;height:29px;padding:0 10px;border:0;border-radius:calc(var(--radius) - 1px);background:none;color:var(--text);font-size:12.5px;text-align:left}
+.ctx-item:hover{background:var(--accent);color:var(--on-accent)}
+.ctx-item .ic{width:15px;height:15px;opacity:.85}
+.ctx-item kbd{margin-left:auto;background:transparent;border-color:transparent;color:inherit;opacity:.6}
+.ctx-item.danger{color:var(--err)}
+.ctx-item.danger:hover{background:var(--err);color:#fff}
+.ctx-sep{height:1px;margin:4px 6px;background:var(--border)}
+@keyframes pop{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:none}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.overlay{position:fixed;inset:0;z-index:40;background:rgba(8,10,14,.5);display:grid;place-items:center;animation:fade .12s}
+.modal{width:min(500px,calc(100vw - 32px));max-height:calc(100vh - 48px);overflow:auto;border:1px solid var(--border-strong);border-radius:calc(var(--radius) + 4px);background:var(--bg-panel);box-shadow:var(--shadow);animation:pop .14s ease-out}
+.modal-head{display:flex;align-items:center;gap:10px;padding:16px 14px 8px 18px}
+.modal-head h3{margin:0;font-size:15px;font-weight:600;flex:1}
+.mh-ic{width:30px;height:30px;display:grid;place-items:center;border-radius:var(--radius);background:var(--accent-soft);color:var(--accent)}
+.modal-body{padding:8px 18px 4px}
+.modal-foot{display:flex;justify-content:flex-end;gap:8px;padding:16px 18px 18px}
+.modal-foot .left{margin-right:auto}
+.mtext{margin:0;color:var(--text-dim);line-height:1.55}
+.mtext b{color:var(--text)}
+.form{display:flex;flex-direction:column;gap:12px}
+.fld{display:flex;flex-direction:column;gap:5px;min-width:0}
+.fld>span{font-size:12px;color:var(--text-dim)}
+.fld input,.fld select,.fld textarea{height:32px;padding:0 10px;border:1px solid var(--border-strong);border-radius:var(--radius);background:var(--bg-input);outline:none;min-width:0;width:100%}
+.fld textarea{height:auto;padding:8px 10px;resize:vertical;line-height:1.55}
+.fld input:focus,.fld select:focus,.fld textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.fld input.invalid{border-color:var(--err);box-shadow:0 0 0 3px rgba(239,107,115,.18)}
+.fld .hint-text{font-size:11.5px;color:var(--text-faint)}
+.row2{display:flex;gap:10px}.grow{flex:1}.w90{width:96px;flex:none}
+.seg-wide{width:max-content}
+.seg-wide button{height:26px;padding:0 12px;font-size:12.5px}
+.seg-wide button .ic{width:14px;height:14px}
+.check{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text)}
+.check input{width:15px;height:15px;accent-color:var(--accent);margin:0}
+.note{display:flex;gap:8px;align-items:flex-start;margin:2px 0 0;padding:9px 11px;border-radius:var(--radius);background:var(--accent-soft);color:var(--text-dim);font-size:12px;line-height:1.5}
+.note .ic{color:var(--accent);margin-top:1px;width:14px;height:14px}
+.pw{display:flex;gap:6px}
+.pw input{flex:1}
+.toast{position:fixed;left:50%;bottom:82px;transform:translateX(-50%);z-index:60;display:flex;align-items:center;gap:8px;max-width:calc(100vw - 40px);padding:9px 15px;border-radius:calc(var(--radius) + 2px);background:var(--text);color:var(--bg-panel);font-size:12.5px;box-shadow:var(--shadow);animation:pop .16s ease-out}
+.toast .ic{width:15px;height:15px}
+.hint{position:fixed;right:18px;bottom:80px;z-index:30;width:310px;padding:14px 16px 14px;border:1px solid var(--border-strong);border-radius:calc(var(--radius) + 4px);background:var(--bg-panel);box-shadow:var(--shadow);font-size:12.5px;color:var(--text-dim);animation:pop .2s ease-out}
+.hint h4{margin:0 0 8px;font-size:13px;color:var(--text);display:flex;align-items:center;gap:8px}
+.hint ul{margin:0 0 8px;padding-left:16px}
+.hint li{margin:4px 0;line-height:1.45}
+.hint b{color:var(--text);font-weight:600}
+.hint .mono{font-size:11.5px;color:var(--accent)}
+.hint-note{margin:0 0 10px;font-size:11.5px;color:var(--text-faint)}
+@media (max-width:1180px){.search-trigger{display:none}}
+</style>
+</head>
+<body>
+<div class="app" id="app" data-layout="stacked" data-side="sessions">
+  <header class="titlebar" id="titlebar"></header>
+  <div class="toolbar" id="toolbar"></div>
+  <nav class="rail" id="rail"></nav>
+  <section class="panel sessions" id="sessionsPanel" data-area="sessions"></section>
+  <section class="panel files" id="filesPanel" data-area="files"></section>
+  <main class="workspace">
+    <div class="tabs" id="tabs"></div>
+    <div class="pane" id="pane" data-area="pane"></div>
+    <div class="macros" id="macros"></div>
+  </main>
+  <footer class="status" id="status"></footer>
+</div>
+<script>
+(() => {
+'use strict';
+
+/* ================= Утилиты ================= */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const attr = s => esc(s).replace(/"/g, '&quot;');
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+let seq = 100;
+const nid = p => p + (++seq);
+const app = $('#app');
+
+/* ================= Иконки ================= */
+const P_FOLDER = '<path d="M1.75 4.5c0-.83.67-1.5 1.5-1.5h2.8l1.4 1.5h5.3c.83 0 1.5.67 1.5 1.5v6c0 .83-.67 1.5-1.5 1.5H3.25c-.83 0-1.5-.67-1.5-1.5z" fill="currentColor" fill-opacity=".2"/>';
+const P_FILE = '<path d="M4.2 1.75h4.9l3.15 3.15v8.35c0 .55-.45 1-1 1H4.2c-.55 0-1-.45-1-1V2.75c0-.55.45-1 1-1z"/><path d="M9 1.9v3.1h3.1"/>';
+const ICONS = {
+  chev: '<path d="M6 4l4 4-4 4"/>',
+  folder: P_FOLDER,
+  folderPlus: P_FOLDER + '<path d="M8.6 7.2v4M6.6 9.2h4"/>',
+  file: P_FILE,
+  filePlus: P_FILE + '<path d="M7.7 8.2v4M5.7 10.2h4"/>',
+  server: '<rect x="2" y="2.5" width="12" height="4.6" rx="1.3"/><rect x="2" y="8.9" width="12" height="4.6" rx="1.3"/><path d="M4.6 4.8h.01M4.6 11.2h.01"/>',
+  term: '<rect x="1.75" y="2.75" width="12.5" height="10.5" rx="1.6"/><path d="M4.6 6.4l2 1.6-2 1.6M8.2 10h3.2"/>',
+  plus: '<path d="M8 3.2v9.6M3.2 8h9.6"/>',
+  refresh: '<path d="M13 8a5 5 0 1 1-1.5-3.55"/><path d="M13 2.6v3h-3"/>',
+  up: '<path d="M8 13V3.5M4.2 7.2L8 3.4l3.8 3.8"/>',
+  upload: '<path d="M8 10.5V2.8M4.8 6L8 2.8 11.2 6"/><path d="M2.8 10.5v2.7h10.4v-2.7"/>',
+  download: '<path d="M8 2.8v7.7M4.8 7.3L8 10.5l3.2-3.2"/><path d="M2.8 10.5v2.7h10.4v-2.7"/>',
+  play: '<path d="M4.8 2.9v10.2L13 8z" fill="currentColor" stroke="none"/>',
+  x: '<path d="M4.2 4.2l7.6 7.6M11.8 4.2l-7.6 7.6"/>',
+  search: '<circle cx="7" cy="7" r="4.3"/><path d="M10.3 10.3l3.4 3.4"/>',
+  gear: '<circle cx="8" cy="8" r="2.1"/><path d="M8 1.9v1.7M8 12.4v1.7M1.9 8h1.7M12.4 8h1.7M3.7 3.7l1.2 1.2M11.1 11.1l1.2 1.2M3.7 12.3l1.2-1.2M11.1 4.9l1.2-1.2"/>',
+  bolt: '<path d="M9.2 1.6L3.6 9.1h4.1l-1 5.3 5.7-7.6H8.3z"/>',
+  link: '<path d="M6.6 9.4l2.8-2.8"/><path d="M5.3 7.4L4 8.7a2.3 2.3 0 0 0 3.3 3.3l1.3-1.3"/><path d="M10.7 8.6L12 7.3A2.3 2.3 0 0 0 8.7 4L7.4 5.3"/>',
+  save: '<path d="M3 2.6h7.7l2.4 2.4v8.4H3z"/><path d="M5.2 2.6v3.2h5V2.6M5.2 13.4V9.6h5.6v3.8"/>',
+  globe: '<circle cx="8" cy="8" r="5.9"/><path d="M2.2 8h11.6M8 2.1c1.9 2.2 1.9 9.6 0 11.8M8 2.1C6.1 4.3 6.1 11.7 8 13.9"/>',
+  lock: '<rect x="3.2" y="7" width="9.6" height="6.6" rx="1.4"/><path d="M5.5 7V5.2a2.5 2.5 0 0 1 5 0V7"/>',
+  key: '<circle cx="5.3" cy="10.7" r="2.6"/><path d="M7.2 8.8l5.6-5.6M10.6 5.4l1.6 1.6M11.8 4.2l1.3 1.3"/>',
+  collapse: '<path d="M4.5 6.2L8 3.2l3.5 3M4.5 9.8l3.5 3 3.5-3"/>',
+  split: '<rect x="2" y="2.6" width="12" height="10.8" rx="1.6"/><path d="M8 2.6v10.8"/>',
+  edit: '<path d="M10.8 2.7l2.5 2.5-7.8 7.8-3 .5.5-3z"/>',
+  trash: '<path d="M3 4.5h10M6.2 4.5V3h3.6v1.5M4.4 4.5l.6 8.6c0 .5.4.9.9.9h4.2c.5 0 .9-.4.9-.9l.6-8.6"/>',
+  copy: '<rect x="5.2" y="5.2" width="8" height="8" rx="1.3"/><path d="M10.8 5.2V3.8c0-.6-.5-1.1-1.1-1.1H3.8c-.6 0-1.1.5-1.1 1.1v5.9c0 .6.5 1.1 1.1 1.1h1.4"/>',
+  plug: '<path d="M6 2.5v3M10 2.5v3M4.5 5.5h7v2.2a3.5 3.5 0 0 1-7 0z"/><path d="M8 11.2v2.3"/>',
+  eye: '<path d="M1.6 8s2.4-4.6 6.4-4.6S14.4 8 14.4 8s-2.4 4.6-6.4 4.6S1.6 8 1.6 8z"/><circle cx="8" cy="8" r="2"/>',
+  info: '<circle cx="8" cy="8" r="6"/><path d="M8 7.2v3.6M8 5h.01"/>',
+  check: '<path d="M3.4 8.4l3 3 6.2-6.8"/>',
+  target: '<circle cx="8" cy="8" r="5.5"/><circle cx="8" cy="8" r="1.8"/>',
+  min: '<path d="M3.5 8.5h9"/>',
+  max: '<rect x="3.5" y="3.5" width="9" height="9" rx="1"/>'
+};
+const ic = (n, cls = '') => `<svg class="ic ${cls}" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n] || ''}</svg>`;
+const logo = (size = 18) => `<svg class="logo" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"><rect x="1" y="1" width="22" height="22" rx="6.5" fill="var(--accent)"/><path d="M7 8.3l3.6 3.7L7 15.7" fill="none" stroke="var(--on-accent)" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M12.8 16.2h4.6" stroke="var(--on-accent)" stroke-width="2.3" stroke-linecap="round"/></svg>`;
+
+/* ================= Демо-данные (вымышленные) ================= */
+const SESSIONS = [
+  { type: 'folder', id: 'f-prod', name: 'Продакшн', open: true, children: [
+    { type: 'session', id: 's-alpha', name: 'alpha-prod', host: '203.0.113.10', port: 22, user: 'root', auth: 'key' },
+    { type: 'session', id: 's-alphadb', name: 'alpha-db', host: '203.0.113.11', port: 22, user: 'postgres', auth: 'password' }
+  ] },
+  { type: 'folder', id: 'f-clients', name: 'Клиенты', open: true, children: [
+    { type: 'folder', id: 'f-romashka', name: 'Ромашка', open: true, children: [
+      { type: 'session', id: 's-web01', name: 'web-01', host: '198.51.100.21', port: 22, user: 'deploy', auth: 'password' },
+      { type: 'session', id: 's-web02', name: 'web-02', host: '198.51.100.22', port: 22, user: 'deploy', auth: 'password' }
+    ] },
+    { type: 'folder', id: 'f-vector', name: 'Вектор', open: false, children: [
+      { type: 'session', id: 's-bot', name: 'bot-server', host: '198.51.100.40', port: 2222, user: 'ubuntu', auth: 'key' }
+    ] }
+  ] },
+  { type: 'folder', id: 'f-personal', name: 'Личное', open: false, children: [
+    { type: 'session', id: 's-vpn', name: 'vpn-node', host: '192.0.2.50', port: 22, user: 'root', auth: 'key' },
+    { type: 'session', id: 's-lab', name: 'home-lab', host: '192.0.2.77', port: 22, user: 'admin', auth: 'password' }
+  ] }
+];
+
+const T = {};
+T.deploy = `#!/usr/bin/env bash
+# Обновление и перезапуск приложения
+set -euo pipefail
+
+APP_DIR=/root/app
+cd "$APP_DIR"
+
+echo "== git pull"
+git pull --ff-only
+
+echo "== сборка и запуск"
+docker compose up -d --build
+
+echo "== статус"
+docker compose ps
+`;
+T.compose = `services:
+  app:
+    build: ./src
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "127.0.0.1:8000:8000"
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
+`;
+T.env = `# Настройки приложения
+APP_ENV=production
+APP_PORT=8000
+DATABASE_URL=postgresql://app:secret@db:5432/app
+LOG_LEVEL=info
+`;
+T.mainPy = `from fastapi import FastAPI
+from config import settings
+
+app = FastAPI(title="Alpha API")
+
+
+@app.get("/api/health")
+async def health():
+    return {"status": "ok", "env": settings.app_env}
+
+
+@app.get("/api/orders")
+async def orders(limit: int = 20):
+    # TODO: пагинация
+    return {"items": [], "limit": limit}
+`;
+T.configPy = `import os
+
+
+class Settings:
+    app_env = os.getenv("APP_ENV", "dev")
+    database_url = os.getenv("DATABASE_URL")
+    log_level = os.getenv("LOG_LEVEL", "info")
+
+
+settings = Settings()
+`;
+T.readme = `# Alpha
+
+Сервис заказов.
+
+## Запуск
+docker compose up -d --build
+`;
+T.notes = `Заметки по alpha-prod
+- бэкап базы каждую ночь в 03:00 (cron)
+- логи: /root/app/logs и docker compose logs app
+- nginx проксирует 443 -> 127.0.0.1:8000
+`;
+T.appLog = `2026-11-25 17:58:02 INFO  Started server on 0.0.0.0:8000
+2026-11-25 17:58:40 INFO  GET /api/health 200 (2 ms)
+2026-11-25 18:01:13 INFO  GET /api/orders?limit=20 200 (14 ms)
+2026-11-25 18:03:27 WARN  Slow query: orders.list took 812 ms
+2026-11-25 18:05:51 INFO  GET /api/health 200 (2 ms)
+`;
+T.errorLog = `2026-11-24 23:14:09 ERROR Database connection lost, retrying in 5 s
+2026-11-24 23:14:14 INFO  Database connection restored
+`;
+T.bashrc = `# ~/.bashrc
+export EDITOR=nano
+alias ll='ls -la'
+alias dc='docker compose'
+`;
+T.profile = `# ~/.profile
+if [ -f ~/.bashrc ]; then
+    . ~/.bashrc
+fi
+`;
+T.nginx = `server {
+    listen 443 ssl;
+    server_name example.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+    }
+}
+`;
+T.syslog = `Nov 25 18:00:01 server CRON[48102]: (root) CMD (/root/backup.sh)
+Nov 25 18:04:12 server systemd[1]: Started session-412.scope.
+Nov 25 18:06:40 server sshd[48233]: Accepted publickey for root from 192.0.2.1
+`;
+T.html = `<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Ромашка</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <h1>Магазин «Ромашка»</h1>
+</body>
+</html>
+`;
+T.css = `body {
+    margin: 0;
+    font-family: system-ui, sans-serif;
+}
+
+h1 {
+    color: #2b6cd4;
+}
+`;
+T.deploySite = `#!/usr/bin/env bash
+# Выкладка сайта
+set -e
+cd /home/deploy/site
+git pull
+sudo systemctl reload nginx
+echo "Готово"
+`;
+T.df = `Filesystem      Size  Used Avail Use% Mounted on
+/dev/vda1        39G   15G   23G  38% /
+tmpfs           982M     0  982M   0% /dev/shm
+/dev/vda15      105M  6.1M   99M   6% /boot/efi`;
+T.free = `               total        used        free      shared  buff/cache   available
+Mem:           1.9Gi       812Mi       214Mi       4.0Mi       1.1Gi       1.1Gi
+Swap:          1.0Gi        12Mi       1.0Gi`;
+T.dockerPs = `CONTAINER ID   IMAGE         STATUS        PORTS                      NAMES
+3f2a1c9d8b7e   app-app       Up 2 hours    127.0.0.1:8000->8000/tcp   app-app-1
+8b7d4e2a1f0c   postgres:16   Up 18 days    5432/tcp                   app-db-1`;
+T.composePs = `NAME        IMAGE         SERVICE   STATUS        PORTS
+app-app-1   app-app       app       Up 2 hours    127.0.0.1:8000->8000/tcp
+app-db-1    postgres:16   db        Up 18 days    5432/tcp`;
+
+const D = (name, children = []) => ({ type: 'dir', name, children });
+const F = (name, content = '', size = null) => ({ type: 'file', name, content, size });
+
+function buildFS(s) {
+  if (s.id === 's-alpha') return { home: '/root', root: D('', [
+    D('root', [
+      D('app', [
+        D('src', [F('main.py', T.mainPy), F('config.py', T.configPy)]),
+        D('logs', [F('app.log', T.appLog), F('error.log', T.errorLog)]),
+        F('docker-compose.yml', T.compose), F('.env', T.env), F('README.md', T.readme)
+      ]),
+      D('backups', [F('db-2026-11-23.sql.gz', null, '48 МБ'), F('db-2026-11-24.sql.gz', null, '49 МБ')]),
+      F('.bashrc', T.bashrc), F('deploy.sh', T.deploy), F('notes.txt', T.notes)
+    ]),
+    D('etc', [D('nginx', [D('sites-enabled', [F('alpha.conf', T.nginx)])])]),
+    D('var', [D('log', [F('syslog', T.syslog)])])
+  ]) };
+  if (s.id === 's-web01' || s.id === 's-web02') return { home: '/home/deploy', root: D('', [
+    D('home', [D('deploy', [
+      D('site', [F('index.html', T.html), D('assets', [F('style.css', T.css)])]),
+      F('.bashrc', T.bashrc), F('deploy.sh', T.deploySite)
+    ])]),
+    D('etc', [D('nginx', [D('sites-enabled', [F('romashka.conf', T.nginx)])])])
+  ]) };
+  const home = s.user === 'root' ? '/root' : '/home/' + s.user;
+  const homeDir = D(home.split('/').pop(), [F('.bashrc', T.bashrc), F('.profile', T.profile), F('notes.txt', 'Заметки по серверу ' + s.name + '\n')]);
+  const top = s.user === 'root' ? [homeDir] : [D('home', [homeDir])];
+  return { home, root: D('', top.concat([D('etc', []), D('var', [D('log', [F('syslog', T.syslog)])])])) };
+}
+
+/* ================= Состояние ================= */
+const DEFAULT_LAYOUT = { graphite: 'stacked', classic: 'classic', light: 'ide' };
+const state = {
+  theme: 'graphite', layout: 'stacked', side: 'sessions', focusArea: 'pane',
+  selectedSession: 's-alpha', tabs: [], activeTab: null,
+  terms: {}, fs: {}, files: {}, follow: true, filter: '', editing: null, modal: null, runningMacro: null, paneKey: '',
+  macros: [
+    { id: 'm1', name: 'Обновить проект', commands: ['cd /root/app', 'git pull --ff-only', 'docker compose up -d --build'], enter: true, scope: { type: 'folder', id: 'f-prod' }, hotkey: 'Ctrl+Alt+1' },
+    { id: 'm2', name: 'Логи приложения', commands: ['cd /root/app', 'docker compose logs --tail=8 app'], enter: true, scope: { type: 'folder', id: 'f-prod' }, hotkey: 'Ctrl+Alt+2' },
+    { id: 'm3', name: 'Место на диске', commands: ['df -h'], enter: true, scope: { type: 'all' }, hotkey: '' },
+    { id: 'm4', name: 'Нагрузка', commands: ['uptime', 'free -h'], enter: true, scope: { type: 'all' }, hotkey: '' },
+    { id: 'm5', name: 'Перезапуск nginx', commands: ['sudo systemctl restart nginx', 'systemctl status nginx'], enter: true, scope: { type: 'folder', id: 'f-romashka' }, hotkey: '' }
+  ]
+};
+
+/* ================= Сессии: помощники ================= */
+function walk(nodes, fn, parents = []) { for (const n of nodes) { fn(n, parents); if (n.children) walk(n.children, fn, parents.concat(n)); } }
+function findEntry(id) { let r = null; walk(SESSIONS, (n, p) => { if (n.id === id) r = { node: n, parents: p }; }); return r; }
+function sess(id) { const e = findEntry(id); return e ? e.node : null; }
+function folders() { const out = []; walk(SESSIONS, (n, p) => { if (n.type === 'folder') out.push({ node: n, depth: p.length }); }); return out; }
+function allSessions() { const out = []; walk(SESSIONS, n => { if (n.type === 'session') out.push(n); }); return out; }
+function countSessions(nodes) { let c = 0; walk(nodes, n => { if (n.type === 'session') c++; }); return c; }
+function isConnected(id) { const t = state.terms[id]; return !!t && !t.closed; }
+function containerOf(id) { const e = findEntry(id); if (!e) return null; return e.parents.length ? e.parents[e.parents.length - 1].children : SESSIONS; }
+function currentFolderId() {
+  const e = state.selectedSession && findEntry(state.selectedSession);
+  if (!e) return '';
+  if (e.node.type === 'folder') return e.node.id;
+  return e.parents.length ? e.parents[e.parents.length - 1].id : '';
+}
+function latency(host) { let h = 0; for (const ch of host) h = (h * 31 + ch.charCodeAt(0)) % 997; return 18 + h % 40; }
+function fakeFp(host) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  let h = 7, out = '';
+  for (let i = 0; i < 16; i++) { h = (h * 131 + host.charCodeAt(i % host.length) + i) % 100003; out += chars[h % 64]; }
+  return out + '…';
+}
+
+/* ================= Файлы: помощники ================= */
+const parts = p => p.split('/').filter(Boolean);
+const joinPath = (b, n) => (b === '/' ? '' : b) + '/' + n;
+const parentPath = p => { const a = parts(p); a.pop(); return '/' + a.join('/'); };
+const baseName = p => parts(p).pop() || '/';
+function getNode(fs, p) {
+  let n = fs.root;
+  for (const x of parts(p)) { if (n.type !== 'dir') return null; n = n.children.find(c => c.name === x); if (!n) return null; }
+  return n;
+}
+function resolvePath(cwd, home, arg) {
+  if (!arg || arg === '~') return home;
+  const p = arg.startsWith('/') ? arg : arg.startsWith('~/') ? home + arg.slice(1) : joinPath(cwd, arg);
+  const out = [];
+  for (const x of parts(p)) { if (x === '.') continue; if (x === '..') out.pop(); else out.push(x); }
+  return '/' + out.join('/');
+}
+const pretty = (p, home) => p === home ? '~' : p.startsWith(home + '/') ? '~' + p.slice(home.length) : p;
+const sortKids = kids => kids.slice().sort((a, b) => (a.type === b.type ? 0 : a.type === 'dir' ? -1 : 1) || a.name.localeCompare(b.name, 'ru'));
+function langOf(name) {
+  const n = name.toLowerCase();
+  if (n.endsWith('.sh') || n === '.bashrc' || n === '.profile') return 'sh';
+  if (n.endsWith('.py')) return 'py';
+  if (n.endsWith('.yml') || n.endsWith('.yaml')) return 'yaml';
+  if (n === '.env' || n.endsWith('.env')) return 'env';
+  if (n.endsWith('.log') || n === 'syslog') return 'log';
+  if (n.endsWith('.conf')) return 'nginx';
+  if (n.endsWith('.md')) return 'md';
+  if (n.endsWith('.html')) return 'html';
+  if (n.endsWith('.css')) return 'css';
+  if (n.endsWith('.gz') || n.endsWith('.zip')) return 'bin';
+  return 'txt';
+}
+const LANG_LABEL = { sh: 'Bash', py: 'Python', yaml: 'YAML', env: 'ENV', log: 'Лог', nginx: 'Nginx', md: 'Markdown', html: 'HTML', css: 'CSS', bin: 'Бинарный', txt: 'Текст' };
+function sizeLabel(n) {
+  if (n.type === 'dir') return '';
+  if (n.size) return n.size;
+  const b = new TextEncoder().encode(n.content || '').length;
+  return b < 1024 ? b + ' Б' : (b / 1024).toFixed(1) + ' КБ';
+}
+function ensure(sid) {
+  if (!state.fs[sid]) state.fs[sid] = buildFS(sess(sid));
+  if (!state.files[sid]) state.files[sid] = { root: state.fs[sid].home, expanded: new Set(), sel: null };
+}
+
+/* ================= Подсветка синтаксиса ================= */
+const KW = {
+  sh: 'if|then|else|elif|fi|for|in|do|done|while|case|esac|function|return|export|local|set|cd|echo|exit|source|alias|sudo|git',
+  py: 'def|class|return|import|from|as|if|elif|else|for|in|while|try|except|finally|with|lambda|None|True|False|and|or|not|pass|raise|await|async|yield',
+  nginx: 'server|listen|server_name|location|proxy_pass|proxy_set_header|root|index|ssl|return|include'
+};
+const tokenRe = kws => new RegExp('(#.*$)|("(?:[^"\\\\]|\\\\.)*"|\'[^\']*\')|(\\$\\{?[A-Za-z_]\\w*\\}?)|\\b(' + kws + ')\\b|\\b(\\d+)\\b', 'g');
+const RE = { sh: tokenRe(KW.sh), py: tokenRe(KW.py), nginx: tokenRe(KW.nginx) };
+function hlLine(line, lang) {
+  const s = esc(line);
+  if (lang === 'log') {
+    if (/\bERROR\b/.test(line)) return `<span class="lg-err">${s}</span>`;
+    if (/\bWARN/.test(line)) return `<span class="lg-warn">${s}</span>`;
+    return s.replace(/\bINFO\b/, '<span class="lg-info">INFO</span>');
+  }
+  if (lang === 'env') { if (/^\s*#/.test(line)) return `<span class="c">${s}</span>`; return s.replace(/^([A-Za-z0-9_]+)(=)/, '<span class="y">$1</span>$2'); }
+  if (lang === 'yaml') {
+    if (/^\s*#/.test(line)) return `<span class="c">${s}</span>`;
+    return s.replace(/^(\s*-?\s*)([\w.\-]+)(:)/, '$1<span class="y">$2</span>$3').replace(/("[^"]*"|'[^']*')/g, '<span class="s">$1</span>');
+  }
+  if (lang === 'md') return /^#/.test(line) ? `<span class="h">${s}</span>` : s;
+  if (lang === 'html') return s.replace(/(&lt;\/?)([\w-]+)/g, '$1<span class="k">$2</span>').replace(/("[^"]*")/g, '<span class="s">$1</span>');
+  if (lang === 'css') return s.replace(/^(\s*)([\w-]+)(\s*:)/, '$1<span class="y">$2</span>$3').replace(/(#[0-9a-fA-F]{3,6})\b/g, '<span class="n">$1</span>');
+  if (lang === 'py' && /^\s*@/.test(line)) return `<span class="k">${s}</span>`;
+  const re = RE[lang];
+  if (!re) return s;
+  re.lastIndex = 0;
+  return s.replace(re, (m, com, str, v, kw, num) =>
+    com ? `<span class="c">${com}</span>` : str ? `<span class="s">${str}</span>` : v ? `<span class="v">${v}</span>` : kw ? `<span class="k">${kw}</span>` : num ? `<span class="n">${num}</span>` : m);
+}
+const hl = (text, lang) => text.split('\n').map(l => hlLine(l, lang)).join('\n');
+
+/* ================= Терминал ================= */
+function out(t, html, cls) {
+  t.lines.push(cls ? `<div class="ln ${cls}">${html}</div>` : `<div class="ln">${html}</div>`);
+  if (t.lines.length > 800) t.lines.splice(0, t.lines.length - 800);
+}
+const outText = (t, text, cls) => text.split('\n').forEach(l => out(t, esc(l), cls));
+function promptHTML(sid) {
+  const s = sess(sid), t = state.terms[sid], fs = state.fs[sid];
+  return `<span class="t-green b">${esc(s.user)}@${esc(s.name)}</span>:<span class="t-blue b">${esc(pretty(t.cwd, fs.home))}</span>${s.user === 'root' ? '#' : '$'} `;
+}
+function fileName(x) {
+  if (x.type === 'dir') return `<span class="t-blue b">${esc(x.name)}</span>`;
+  if (x.name.endsWith('.sh')) return `<span class="t-green b">${esc(x.name)}</span>`;
+  if (x.content == null) return `<span class="t-red b">${esc(x.name)}</span>`;
+  return esc(x.name);
+}
+const logLine = l => esc(l).replace(/\bINFO\b/, '<span class="t-green">INFO</span>').replace(/\bWARN\b/, '<span class="t-yellow">WARN</span>').replace(/\bERROR\b/, '<span class="t-red">ERROR</span>');
+function banner(sid) {
+  const t = state.terms[sid], s = sess(sid);
+  out(t, `Подключение к ${esc(s.host)}:${s.port} как ${esc(s.user)}…`, 'dim');
+  out(t, `Ключ сервера совпадает с сохранённым (ED25519 SHA256:${esc(fakeFp(s.host))})`, 'dim');
+  out(t, s.auth === 'key' ? 'Вход по ключу ~/.ssh/id_ed25519 · SFTP подключён' : 'Вход по сохранённому паролю · SFTP подключён', 'dim');
+  out(t, '');
+  out(t, 'Welcome to Ubuntu 24.04.3 LTS (GNU/Linux 6.8.0-88-generic x86_64)');
+  out(t, '');
+  out(t, '  System load:  0.08               Memory usage: 41%');
+  out(t, '  Usage of /:   37.2% of 39.07GB   Processes:    142');
+  out(t, '');
+  out(t, 'Last login: Tue Nov 24 21:14:03 2026 from 192.0.2.1');
+}
+function newTerm(sid) {
+  const t = { lines: [], cwd: state.fs[sid].home, input: '', hist: [], hi: -1, busy: false, closed: false, pulled: false };
+  state.terms[sid] = t;
+  banner(sid);
+  return t;
+}
+function runOne(sid, line) {
+  const t = state.terms[sid], fs = state.fs[sid], s = sess(sid);
+  let args = line.trim().split(/\s+/);
+  if (args[0] === 'sudo') args = args.slice(1);
+  const cmd = args[0], rest = args.slice(1);
+  const flags = rest.filter(a => a.startsWith('-')).join('');
+  const target = rest.find(a => !a.startsWith('-'));
+  const err = msg => { out(t, esc(msg), 't-red'); return false; };
+  const hasCompose = !!getNode(fs, joinPath(t.cwd, 'docker-compose.yml'));
+  switch (cmd) {
+    case 'help':
+      outText(t, 'Это макет — терминал понимает несколько команд:\n  ls, ll, cd, pwd, cat, touch, mkdir, rm, nano <файл>, clear, exit\n  df -h, free -h, uptime, whoami, docker ps, git pull, git status\nTab дополняет имя файла, ↑/↓ — история, Ctrl+L — очистить экран.', 'dim');
+      return;
+    case 'clear': t.lines = []; return;
+    case 'pwd': out(t, esc(t.cwd)); return;
+    case 'whoami': out(t, esc(s.user)); return;
+    case 'hostname': out(t, esc(s.name)); return;
+    case 'echo': out(t, esc(rest.join(' ').replace(/^["']|["']$/g, ''))); return;
+    case 'cd': {
+      const p = resolvePath(t.cwd, fs.home, target);
+      const n = getNode(fs, p);
+      if (!n) return err(`bash: cd: ${target}: No such file or directory`);
+      if (n.type !== 'dir') return err(`bash: cd: ${target}: Not a directory`);
+      t.cwd = p; return;
+    }
+    case 'ls': case 'll': case 'la': {
+      const long = cmd !== 'ls' || flags.includes('l');
+      const all = cmd !== 'ls' || flags.includes('a');
+      const p = target ? resolvePath(t.cwd, fs.home, target) : t.cwd;
+      const n = getNode(fs, p);
+      if (!n) return err(`ls: cannot access '${target}': No such file or directory`);
+      if (n.type === 'file') { out(t, fileName(n)); return; }
+      const kids = sortKids(n.children).filter(x => all || !x.name.startsWith('.'));
+      if (!long) { if (kids.length) out(t, kids.map(fileName).join('  ')); return; }
+      out(t, 'total ' + kids.length * 4);
+      for (const x of kids) {
+        const size = x.type === 'dir' ? 4096 : x.content == null ? 50331648 : new TextEncoder().encode(x.content).length;
+        out(t, esc(`${x.type === 'dir' ? 'drwxr-xr-x' : '-rw-r--r--'} 1 ${s.user.padEnd(8)} ${s.user.padEnd(8)} ${String(size).padStart(8)} Nov 24 21:14 `) + fileName(x));
+      }
+      return;
+    }
+    case 'cat': {
+      if (!target) return err('cat: укажите файл');
+      const p = resolvePath(t.cwd, fs.home, target), n = getNode(fs, p);
+      if (!n) return err(`cat: ${target}: No such file or directory`);
+      if (n.type === 'dir') return err(`cat: ${target}: Is a directory`);
+      if (n.content == null) { out(t, '(бинарный файл)', 'dim'); return; }
+      outText(t, n.content.replace(/\n$/, ''));
+      return;
+    }
+    case 'touch': case 'mkdir': {
+      if (!target) return err(cmd + ': missing operand');
+      const p = resolvePath(t.cwd, fs.home, target), par = getNode(fs, parentPath(p));
+      if (!par || par.type !== 'dir') return err(`${cmd}: cannot create '${target}': No such file or directory`);
+      if (getNode(fs, p)) { if (cmd === 'mkdir') return err(`mkdir: cannot create directory '${target}': File exists`); return; }
+      par.children.push(cmd === 'mkdir' ? D(baseName(p)) : F(baseName(p), ''));
+      return;
+    }
+    case 'rm': {
+      if (!target) return err('rm: missing operand');
+      const p = resolvePath(t.cwd, fs.home, target), n = getNode(fs, p);
+      if (!n) return err(`rm: cannot remove '${target}': No such file or directory`);
+      if (n.type === 'dir' && !flags.includes('r')) return err(`rm: cannot remove '${target}': Is a directory`);
+      removePath(sid, p, true);
+      return;
+    }
+    case 'nano': case 'vim': case 'vi': case 'mcedit': case 'micro': {
+      if (!target) return err(cmd + ': укажите файл');
+      const p = resolvePath(t.cwd, fs.home, target);
+      let n = getNode(fs, p);
+      if (!n) {
+        const par = getNode(fs, parentPath(p));
+        if (!par || par.type !== 'dir') return err(`${cmd}: ${target}: No such file or directory`);
+        par.children.push(F(baseName(p), ''));
+        n = getNode(fs, p);
+      }
+      if (n.type === 'dir') return err(`${cmd}: ${target}: Is a directory`);
+      out(t, `→ открыто во встроенном редакторе Termion: ${esc(p)}`, 'dim');
+      setTimeout(() => openFile(sid, p), 60);
+      return;
+    }
+    case 'df': outText(t, T.df); return;
+    case 'free': outText(t, T.free); return;
+    case 'uptime': out(t, ' 18:06:42 up 18 days,  3:11,  1 user,  load average: 0.08, 0.05, 0.01'); return;
+    case 'docker':
+      if (rest[0] === 'ps') { outText(t, T.dockerPs); return; }
+      if (rest[0] === 'compose') {
+        if (!hasCompose) return err('no configuration file provided: not found');
+        if (rest.includes('up')) {
+          out(t, '[+] Building 11.8s (10/10) FINISHED');
+          out(t, '[+] Running 2/2');
+          out(t, ' <span class="t-green">✔</span> Container app-db-1   <span class="t-green">Running</span>');
+          out(t, ' <span class="t-green">✔</span> Container app-app-1  <span class="t-green">Started</span>');
+          return;
+        }
+        if (rest.includes('logs')) { T.appLog.trim().split('\n').forEach(l => out(t, '<span class="t-cyan">app-1  |</span> ' + logLine(l))); return; }
+        if (rest.includes('ps')) { outText(t, T.composePs); return; }
+      }
+      return err('docker: в макете есть только ps, compose up, compose logs, compose ps');
+    case 'git':
+      if (!hasCompose && !getNode(fs, joinPath(t.cwd, 'index.html'))) return err('fatal: not a git repository (or any of the parent directories): .git');
+      if (rest[0] === 'pull') {
+        if (t.pulled) { out(t, 'Already up to date.'); return; }
+        t.pulled = true;
+        out(t, 'Updating 3f2a1c9..8b7d4e2');
+        out(t, 'Fast-forward');
+        out(t, ' src/main.py | 12 <span class="t-green">+++++++</span><span class="t-red">-----</span>');
+        out(t, ' 1 file changed, 7 insertions(+), 5 deletions(-)');
+        return;
+      }
+      if (rest[0] === 'status') { outText(t, "On branch main\nYour branch is up to date with 'origin/main'.\n\nnothing to commit, working tree clean"); return; }
+      return err('git: в макете есть только pull и status');
+    case 'systemctl': {
+      if (rest[0] === 'restart' || rest[0] === 'reload') return;
+      if (rest[0] === 'status') {
+        const u = (rest.find((a, i) => i > 0 && !a.startsWith('-')) || 'nginx').replace('.service', '');
+        out(t, `<span class="t-green">●</span> ${esc(u)}.service - ${u === 'nginx' ? 'A high performance web server and a reverse proxy server' : esc(u)}`);
+        out(t, esc(`     Loaded: loaded (/usr/lib/systemd/system/${u}.service; enabled; preset: enabled)`));
+        out(t, '     Active: <span class="t-green b">active (running)</span> since Wed 2026-11-25 18:07:02 UTC; 2s ago');
+        out(t, esc(`   Main PID: 48211 (${u})`));
+        return;
+      }
+      return err('systemctl: в макете есть только restart и status');
+    }
+    case 'exit': case 'logout':
+      out(t, 'logout');
+      out(t, `Соединение с ${esc(s.host)} закрыто.`, 'dim');
+      t.closed = true;
+      return false;
+    default:
+      return err(`bash: ${cmd}: command not found`);
+  }
+}
+function runCommand(sid, line) {
+  for (const part of line.split(/\s*(?:&&|;)\s*/)) {
+    if (!part.trim()) continue;
+    if (runOne(sid, part) === false) break;
+  }
+}
+function scripted(sid, cmd) {
+  const t = state.terms[sid];
+  out(t, promptHTML(sid) + esc(cmd));
+  t.hist.push(cmd);
+  runCommand(sid, cmd);
+}
+function execInput(sid) {
+  const t = state.terms[sid];
+  if (!t) return;
+  const cmd = t.input.trim();
+  out(t, promptHTML(sid) + esc(t.input));
+  t.input = ''; t.hi = -1;
+  if (cmd) { t.hist.push(cmd); runCommand(sid, cmd); }
+  syncFilesToCwd(sid);
+  renderPane(); renderTabs(); renderFiles(); renderSessions(); renderStatus(); renderMacros(); renderRail();
+}
+function syncFilesToCwd(sid) {
+  const t = state.terms[sid], fv = state.files[sid];
+  if (state.follow && t && fv && !t.closed) fv.root = t.cwd;
+}
+function reconnect(sid) {
+  const t = state.terms[sid];
+  if (!t) return;
+  t.closed = false; t.cwd = state.fs[sid].home;
+  out(t, '');
+  banner(sid);
+  syncFilesToCwd(sid);
+  renderAll();
+}
+function complete(sid) {
+  const t = state.terms[sid], fs = state.fs[sid];
+  const m = t.input.match(/^(.*?)(\S*)$/);
+  const before = m[1], word = m[2];
+  const slash = word.lastIndexOf('/');
+  const dirPart = slash >= 0 ? word.slice(0, slash + 1) : '';
+  const base = slash >= 0 ? word.slice(slash + 1) : word;
+  const dir = getNode(fs, dirPart ? resolvePath(t.cwd, fs.home, dirPart) : t.cwd);
+  if (!dir || dir.type !== 'dir') return;
+  const c = sortKids(dir.children).filter(x => x.name.startsWith(base));
+  if (c.length === 1) {
+    t.input = before + dirPart + c[0].name + (c[0].type === 'dir' ? '/' : ' ');
+  } else if (c.length > 1) {
+    out(t, promptHTML(sid) + esc(t.input));
+    out(t, c.map(x => x.type === 'dir' ? `<span class="t-blue b">${esc(x.name)}/</span>` : esc(x.name)).join('  '));
+    let pre = c[0].name;
+    for (const x of c) while (!x.name.startsWith(pre)) pre = pre.slice(0, -1);
+    t.input = before + dirPart + pre;
+  }
+  renderPane();
+}
+
+/* ================= Сессии и вкладки ================= */
+const activeTabObj = () => state.tabs.find(t => t.id === state.activeTab) || null;
+const activeSid = () => { const t = activeTabObj(); return t ? t.sid : null; };
+const termTabOf = sid => state.tabs.find(t => t.kind === 'term' && t.sid === sid);
+const isOpenFile = (sid, p) => state.tabs.some(t => t.kind === 'file' && t.sid === sid && t.path === p);
+
+function openSession(sid, opts = {}) {
+  const s = sess(sid);
+  if (!s || s.type !== 'session') return null;
+  ensure(sid);
+  let tab = termTabOf(sid), fresh = false;
+  if (!tab) {
+    newTerm(sid); fresh = true;
+    tab = { id: nid('t'), kind: 'term', sid };
+    state.tabs.push(tab);
+  } else if (state.terms[sid].closed) {
+    reconnect(sid);
+  }
+  state.selectedSession = sid;
+  if (opts.activate !== false) { state.activeTab = tab.id; state.focusArea = 'pane'; }
+  syncFilesToCwd(sid);
+  if (!opts.silent) renderAll();
+  if (fresh && s.onConnect && !opts.silent) setTimeout(() => runMacro(s.onConnect), 350);
+  return tab;
+}
+function openFile(sid, path, opts = {}) {
+  const fs = state.fs[sid], n = getNode(fs, path);
+  if (!n || n.type !== 'file') return null;
+  if (n.content == null) { toast('Это бинарный файл — его можно только скачать', 'info'); return null; }
+  let tab = state.tabs.find(t => t.kind === 'file' && t.sid === sid && t.path === path);
+  if (!tab) {
+    tab = { id: nid('t'), kind: 'file', sid, path, dirty: false, draft: null };
+    const idx = state.tabs.findIndex(t => t.id === state.activeTab);
+    state.tabs.splice(idx >= 0 ? idx + 1 : state.tabs.length, 0, tab);
+  }
+  state.files[sid].sel = path;
+  if (opts.activate !== false) { state.activeTab = tab.id; state.focusArea = 'pane'; }
+  if (!opts.silent) renderAll();
+  return tab;
+}
+function activate(id) {
+  state.activeTab = id;
+  const tab = activeTabObj();
+  if (tab) state.selectedSession = tab.sid;
+  state.focusArea = 'pane';
+  renderAll();
+}
+function closeTab(id) {
+  const tab = state.tabs.find(t => t.id === id);
+  if (!tab) return;
+  const doClose = () => {
+    const i = state.tabs.findIndex(t => t.id === id);
+    if (i < 0) return;
+    state.tabs.splice(i, 1);
+    if (tab.kind === 'term') delete state.terms[tab.sid];
+    if (state.activeTab === id) { const next = state.tabs[i] || state.tabs[i - 1]; state.activeTab = next ? next.id : null; }
+    renderAll();
+  };
+  if (tab.kind === 'file' && tab.dirty) {
+    openModal({
+      title: 'Сохранить изменения?', icon: 'save',
+      body: `<p class="mtext">Файл <b class="mono">${esc(baseName(tab.path))}</b> изменён. Сохранить его на сервере перед закрытием?</p>`,
+      buttons: [
+        { label: 'Не сохранять', cls: 'left', run: doClose },
+        { label: 'Отмена' },
+        { label: 'Сохранить', cls: 'primary', primary: true, run: () => { state.activeTab = tab.id; saveActive(); doClose(); } }
+      ]
+    });
+  } else doClose();
+}
+function saveActive() {
+  const tab = activeTabObj();
+  if (!tab || tab.kind !== 'file') return;
+  if (!tab.dirty) { toast('Изменений нет', 'info'); return; }
+  const n = getNode(state.fs[tab.sid], tab.path);
+  if (n) n.content = tab.draft;
+  tab.draft = null; tab.dirty = false;
+  renderPane(true); renderTabs(); renderStatus(); renderFiles();
+  toast('Сохранено на сервере: ' + tab.path);
+}
+function removePath(sid, p, quiet) {
+  const fs = state.fs[sid], par = getNode(fs, parentPath(p));
+  if (!par) return;
+  par.children = par.children.filter(c => c.name !== baseName(p));
+  const gone = t => t.kind === 'file' && t.sid === sid && (t.path === p || t.path.startsWith(p + '/'));
+  if (state.tabs.some(t => gone(t) && t.id === state.activeTab)) state.activeTab = termTabOf(sid) ? termTabOf(sid).id : null;
+  state.tabs = state.tabs.filter(t => !gone(t));
+  if (!quiet) { renderAll(); toast('Удалено: ' + p); }
+}
+function removeSession(id) {
+  const list = containerOf(id);
+  if (!list) return;
+  list.splice(list.findIndex(n => n.id === id), 1);
+  state.tabs = state.tabs.filter(t => t.sid !== id);
+  if (!activeTabObj()) state.activeTab = state.tabs.length ? state.tabs[0].id : null;
+  delete state.terms[id]; delete state.fs[id]; delete state.files[id];
+  if (state.selectedSession === id) state.selectedSession = null;
+  renderAll();
+}
+function insertInFolder(node, folderId) {
+  const f = folderId && sess(folderId);
+  if (f) { f.children.push(node); f.open = true; } else SESSIONS.push(node);
+}
+
+/* ================= Макросы ================= */
+function applies(m, sid) {
+  if (m.scope.type === 'all') return true;
+  if (m.scope.type === 'session') return m.scope.id === sid;
+  const e = findEntry(sid);
+  return !!e && e.parents.some(p => p.id === m.scope.id);
+}
+async function typeCommands(sid, commands, enter = true) {
+  const t = state.terms[sid];
+  if (!t || t.busy || t.closed) return;
+  t.busy = true;
+  try {
+    for (const line of commands) {
+      t.input = '';
+      for (const ch of line) { t.input += ch; if (activeSid() === sid) renderPane(); await sleep(line.length > 30 ? 9 : 16); }
+      await sleep(150);
+      if (enter) { execInput(sid); await sleep(280); }
+    }
+  } finally { t.busy = false; if (activeSid() === sid) renderPane(); }
+}
+async function runMacro(id) {
+  const m = state.macros.find(x => x.id === id);
+  if (!m) return;
+  const sid = activeSid();
+  if (!sid || !isConnected(sid)) { toast('Сначала подключитесь к сессии', 'info'); return; }
+  const tab = termTabOf(sid);
+  if (tab && state.activeTab !== tab.id) { state.activeTab = tab.id; state.focusArea = 'pane'; renderAll(); }
+  state.runningMacro = id; renderMacros();
+  await typeCommands(sid, m.commands, m.enter !== false);
+  state.runningMacro = null; renderMacros();
+}
+
+/* ================= Отрисовка ================= */
+function renderAll() { renderSessions(); renderFiles(); renderTabs(); renderPane(); renderMacros(); renderStatus(); renderRail(); }
+
+function renderSessions() {
+  $('#sessCount').textContent = countSessions(SESSIONS);
+  const f = state.filter.trim().toLowerCase();
+  const match = n => (n.name + ' ' + n.host + ' ' + n.user).toLowerCase().includes(f);
+  const folderHas = n => n.children.some(c => c.type === 'folder' ? folderHas(c) : match(c));
+  const mark = name => {
+    const i = f ? name.toLowerCase().indexOf(f) : -1;
+    if (i < 0) return esc(name);
+    return esc(name.slice(0, i)) + '<mark>' + esc(name.slice(i, i + f.length)) + '</mark>' + esc(name.slice(i + f.length));
+  };
+  const rows = [];
+  const walkRows = (nodes, d) => {
+    for (const n of nodes) {
+      if (n.type === 'folder') {
+        if (f && !folderHas(n)) continue;
+        const open = f ? true : n.open;
+        rows.push(`<div class="row folder${open ? ' open' : ''}${state.selectedSession === n.id ? ' selected' : ''}" data-folder="${n.id}" style="--d:${d}"><span class="chev">${ic('chev')}</span><span class="ri fi-folder">${ic('folder')}</span><span class="rn">${esc(n.name)}</span><span class="cnt">${countSessions(n.children)}</span></div>`);
+        if (open) walkRows(n.children, d + 1);
+      } else {
+        if (f && !match(n)) continue;
+        const on = isConnected(n.id);
+        rows.push(`<div class="row sess${state.selectedSession === n.id ? ' selected' : ''}" data-sess="${n.id}" style="--d:${d}" title="${attr(n.user + '@' + n.host + ':' + n.port + ' — двойной клик, чтобы подключиться')}"><span class="chev"></span><span class="ri${on ? ' live' : ''}">${ic('server')}<i class="sdot${on ? ' on' : ''}"></i></span><span class="rn">${mark(n.name)}</span><span class="meta mono">${esc(n.host)}</span></div>`);
+      }
+    }
+  };
+  walkRows(SESSIONS, 0);
+  $('#sessTree').innerHTML = rows.join('') || '<div class="empty-small">Ничего не найдено</div>';
+}
+
+function renderFiles() {
+  const el = $('#filesPanel');
+  const sid = activeSid();
+  const actions = sid ? `<div class="ph-actions">
+      <button class="icon-btn" data-act="newfile" title="Новый файл">${ic('filePlus')}</button>
+      <button class="icon-btn" data-act="newdir" title="Новая папка">${ic('folderPlus')}</button>
+      <button class="icon-btn" data-act="refresh" title="Обновить">${ic('refresh')}</button></div>` : '';
+  if (!sid) {
+    el.innerHTML = `<div class="panel-head"><span class="ph-title">Файлы</span></div><div class="empty-panel">${ic('folder')}<p>Подключитесь к сессии — здесь появятся файлы сервера</p></div>`;
+    return;
+  }
+  const s = sess(sid), fs = state.fs[sid], fv = state.files[sid];
+  const on = isConnected(sid);
+  const head = `<div class="panel-head"><span class="ph-title">Файлы</span><span class="ph-chip${on ? '' : ' off'}" title="${attr(s.user + '@' + s.host)}"><i></i><span>${esc(s.name)}</span></span>${on ? actions : ''}</div>`;
+  if (!on) {
+    el.innerHTML = head + `<div class="empty-panel">${ic('plug')}<p>Соединение закрыто</p><button class="btn sm primary" data-act="reconnect">Переподключиться</button></div>`;
+    return;
+  }
+  const crumbs = ['<button class="crumb" data-act="crumb" data-path="/">/</button>'];
+  let acc = '';
+  const ps = parts(fv.root);
+  ps.forEach((x, i) => {
+    acc += '/' + x;
+    crumbs.push(`<button class="crumb${i === ps.length - 1 ? ' last' : ''}" data-act="crumb" data-path="${attr(acc)}">${esc(x)}</button>`);
+    if (i < ps.length - 1) crumbs.push('<span class="sep">/</span>');
+  });
+  const pathbar = `<div class="pathbar">
+      <button class="icon-btn" data-act="up" title="На уровень выше">${ic('up')}</button>
+      <div class="crumbs mono" title="${attr(fv.root)}">${crumbs.join('')}</div>
+      <button class="icon-btn${state.follow ? ' on' : ''}" data-act="follow" title="Следовать за папкой терминала">${ic('link')}</button></div>`;
+  const ed = state.editing && state.editing.sid === sid ? state.editing : null;
+  const inlineRow = (depth, node, mode) => {
+    const isDir = mode === 'newdir' || (node && node.type === 'dir');
+    return `<div class="row inline" style="--d:${depth}"><span class="chev"></span><span class="ri ${isDir ? 'fi-folder' : 'fi-' + langOf(node ? node.name : '')}">${ic(isDir ? 'folder' : 'file')}</span><input id="inlineEdit" class="inline-input mono" value="${attr(node ? node.name : '')}" placeholder="${mode === 'newdir' ? 'имя папки' : 'имя файла'}" spellcheck="false"></div>`;
+  };
+  const rows = [];
+  const walkDir = (dir, dirPath, depth) => {
+    if (ed && ed.mode !== 'rename' && ed.parent === dirPath) rows.push(inlineRow(depth, null, ed.mode));
+    for (const ch of sortKids(dir.children)) {
+      const p = joinPath(dirPath, ch.name);
+      if (ed && ed.mode === 'rename' && ed.path === p) { rows.push(inlineRow(depth, ch, 'rename')); continue; }
+      if (ch.type === 'dir') {
+        const open = fv.expanded.has(p);
+        rows.push(`<div class="row fdir${open ? ' open' : ''}${fv.sel === p ? ' selected' : ''}" data-path="${attr(p)}" data-kind="dir" style="--d:${depth}"><span class="chev">${ic('chev')}</span><span class="ri fi-folder">${ic('folder')}</span><span class="rn">${esc(ch.name)}</span></div>`);
+        if (open) walkDir(ch, p, depth + 1);
+      } else {
+        rows.push(`<div class="row ffile${fv.sel === p ? ' selected' : ''}${isOpenFile(sid, p) ? ' opened' : ''}" data-path="${attr(p)}" data-kind="file" style="--d:${depth}" title="Двойной клик — открыть"><span class="chev"></span><span class="ri fi-${langOf(ch.name)}">${ic('file')}</span><span class="rn">${esc(ch.name)}</span><span class="meta mono">${esc(sizeLabel(ch))}</span></div>`);
+      }
+    }
+  };
+  const rootNode = getNode(fs, fv.root);
+  if (rootNode && rootNode.type === 'dir') walkDir(rootNode, fv.root, 0);
+  el.innerHTML = head + pathbar + `<div class="tree" id="fileTree">${rows.join('') || '<div class="empty-small">Папка пуста</div>'}</div>`;
+  if (ed) { const inp = $('#inlineEdit'); if (inp) { inp.focus(); const dot = inp.value.lastIndexOf('.'); inp.setSelectionRange(0, dot > 0 ? dot : inp.value.length); } }
+}
+
+function renderTabs() {
+  $('#tabs').innerHTML = state.tabs.map(tab => {
+    const s = sess(tab.sid);
+    const active = tab.id === state.activeTab ? ' active' : '';
+    if (tab.kind === 'term') {
+      const on = isConnected(tab.sid);
+      return `<div class="tab is-term${active}" data-tab="${tab.id}" title="${attr(s.user + '@' + s.host + ':' + s.port)}"><span class="tab-ic">${ic('term')}<i class="${on ? 'ok' : ''}"></i></span><span class="tab-name">${esc(s.name)}</span><button class="tab-x" data-close="${tab.id}" title="Закрыть">${ic('x')}</button></div>`;
+    }
+    const name = baseName(tab.path);
+    return `<div class="tab is-file${active}" data-tab="${tab.id}" title="${attr(tab.path + ' — ' + s.name)}"><span class="tab-ic fi-${langOf(name)}">${ic('file')}</span><span class="tab-name">${esc(name)}</span><span class="tab-sub">${esc(s.name)}</span>${tab.dirty ? `<span class="tab-dirty" data-close="${tab.id}" title="Есть несохранённые изменения">●</span>` : `<button class="tab-x" data-close="${tab.id}" title="Закрыть">${ic('x')}</button>`}</div>`;
+  }).join('') + `<button class="tab-add" data-act="new-session" title="Новая сессия">${ic('plus')}</button>`;
+}
+
+function emptyHTML() {
+  return `<div class="empty">${logo(46)}<h2>Termion</h2><p>Дважды щёлкните по сессии в дереве, чтобы подключиться</p>
+    <div class="empty-actions"><button class="btn primary" data-act="new-session">${ic('plus')}Новая сессия</button><button class="btn" data-act="connect-selected">${ic('plug')}Подключить выбранную</button></div>
+    <div class="empty-keys"><span><kbd>Ctrl K</kbd> поиск</span><span><kbd>Ctrl S</kbd> сохранить файл</span><span><kbd>Ctrl Alt 1</kbd> макрос</span></div></div>`;
+}
+function editorHTML(tab) {
+  const s = sess(tab.sid), n = getNode(state.fs[tab.sid], tab.path);
+  const text = tab.draft != null ? tab.draft : (n && n.content) || '';
+  const lang = langOf(baseName(tab.path));
+  const count = text.split('\n').length;
+  return `<div class="editor">
+    <div class="ed-bar">
+      <div class="ed-path"><span class="fi-${lang}">${ic('file')}</span><span class="mono">${esc(tab.path)}</span><span class="ed-on">на ${esc(s.name)}</span></div>
+      <div class="ed-actions"><span class="ed-lang">${LANG_LABEL[lang]}</span>
+        <button class="btn sm" data-act="reload" title="Перечитать файл с сервера">${ic('refresh')}Перечитать</button>
+        <button class="btn sm primary" data-act="save" ${tab.dirty ? '' : 'disabled'}>${ic('save')}Сохранить <kbd>Ctrl S</kbd></button></div>
+    </div>
+    <div class="ed-body"><div class="gutter">${Array.from({ length: count }, (_, i) => i + 1).join('\n')}</div><pre class="code" contenteditable="plaintext-only" spellcheck="false">${hl(text, lang)}</pre></div>
+  </div>`;
+}
+function renderPane(force) {
+  const pane = $('#pane'), tab = activeTabObj();
+  if (!tab) { state.paneKey = 'empty'; pane.innerHTML = emptyHTML(); return; }
+  if (tab.kind === 'term') {
+    state.paneKey = 'term';
+    const t = state.terms[tab.sid];
+    let html = t.lines.join('');
+    html += t.closed
+      ? '<div class="ln dim">Нажмите Enter, чтобы переподключиться</div>'
+      : `<div class="ln">${promptHTML(tab.sid)}${esc(t.input)}<span class="cur"></span></div>`;
+    let term = pane.querySelector('.term');
+    if (!term) { pane.innerHTML = '<div class="term"></div>'; term = pane.querySelector('.term'); }
+    term.classList.toggle('blur', state.focusArea !== 'pane');
+    term.innerHTML = html;
+    term.scrollTop = term.scrollHeight;
+    return;
+  }
+  const key = 'file:' + tab.id + ':' + tab.path;
+  if (!force && state.paneKey === key && pane.querySelector('.editor')) return;
+  state.paneKey = key;
+  pane.innerHTML = editorHTML(tab);
+}
+function renderMacros() {
+  const sid = activeSid(), on = sid && isConnected(sid);
+  const list = state.macros.filter(m => !sid || applies(m, sid));
+  const badge = m => {
+    if (m.scope.type === 'all') return '';
+    const n = sess(m.scope.id);
+    return n ? `<span class="scope">${ic(m.scope.type === 'folder' ? 'folder' : 'server')}${esc(n.name)}</span>` : '';
+  };
+  $('#macros').innerHTML = `<span class="mac-label">${ic('bolt')}Макросы</span>` + list.map(m =>
+    `<button class="chip${state.runningMacro === m.id ? ' running' : ''}" data-macro="${m.id}" title="${attr(m.commands.join('\n') + (m.hotkey ? '\n\nГорячая клавиша: ' + m.hotkey : '') + '\nПравый клик — изменить')}"${on ? '' : ' data-off="1"'}>${ic('play')}<span>${esc(m.name)}</span>${badge(m)}</button>`
+  ).join('') + `<button class="chip chip-add" data-act="new-macro">${ic('plus')}<span>Макрос</span></button>`;
+}
+function renderStatus() {
+  const el = $('#status'), tab = activeTabObj();
+  if (!tab) { el.innerHTML = `<span class="st">${ic('info')} Нет открытых сессий — дважды щёлкните по сессии в дереве</span>`; return; }
+  const s = sess(tab.sid);
+  if (tab.kind === 'term') {
+    const on = isConnected(tab.sid), fv = state.files[tab.sid];
+    el.innerHTML = `<span class="st"><i class="st-dot${on ? '' : ' off'}"></i>${on ? 'Подключено' : 'Отключено'}</span>
+      <span class="st mono">${esc(s.user)}@${esc(s.host)}:${s.port}</span>
+      <span class="st">${ic(s.auth === 'key' ? 'key' : 'lock')}${s.auth === 'key' ? 'Ключ' : 'Пароль'}</span>
+      <span class="st">${on ? latency(s.host) + ' мс' : '—'}</span>
+      <div class="st-right"><span class="st">SFTP: <span class="mono">${esc(fv ? fv.root : '—')}</span></span><span class="st">UTF-8</span><span class="st">xterm-256color</span></div>`;
+  } else {
+    const n = getNode(state.fs[tab.sid], tab.path);
+    const text = tab.draft != null ? tab.draft : (n && n.content) || '';
+    el.innerHTML = `<span class="st">${ic('file')}<span class="mono">${esc(tab.path)}</span></span><span class="st">на ${esc(s.name)}</span>
+      ${tab.dirty ? '<span class="st st-warn">● Не сохранено</span>' : '<span class="st">' + ic('check') + 'Сохранено</span>'}
+      <div class="st-right"><span class="st">${LANG_LABEL[langOf(baseName(tab.path))]}</span><span class="st">UTF-8 · LF</span><span class="st">Строк: ${text.split('\n').length}</span></div>`;
+  }
+}
+function renderRail() {
+  const b = $('#railBadge');
+  if (b) b.classList.toggle('on', state.tabs.some(t => t.kind === 'term' && isConnected(t.sid)));
+}
+function setFocus(area) {
+  state.focusArea = area;
+  const term = $('.term');
+  if (term) term.classList.toggle('blur', area !== 'pane');
+  $$('.panel').forEach(p => p.classList.toggle('focused', p.dataset.area === area));
+}
+
+/* ================= Окно, меню, уведомления ================= */
+function openModal({ title, icon, body, buttons, onMount, width }) {
+  closeModal();
+  const ov = document.createElement('div');
+  ov.className = 'overlay';
+  ov.innerHTML = `<div class="modal" role="dialog"${width ? ` style="width:min(${width}px,calc(100vw - 32px))"` : ''}>
+    <div class="modal-head">${icon ? `<span class="mh-ic">${ic(icon)}</span>` : ''}<h3>${esc(title)}</h3><button class="icon-btn" data-m="close" title="Закрыть">${ic('x')}</button></div>
+    <div class="modal-body">${body}</div>
+    <div class="modal-foot">${buttons.map((b, i) => `<button class="btn ${b.cls || ''}" data-mb="${i}">${esc(b.label)}</button>`).join('')}</div></div>`;
+  document.body.appendChild(ov);
+  state.modal = ov;
+  ov.addEventListener('mousedown', e => { if (e.target === ov) closeModal(ov); });
+  ov.addEventListener('click', e => {
+    if (e.target.closest('[data-m="close"]')) { closeModal(ov); return; }
+    const b = e.target.closest('[data-mb]');
+    if (!b) return;
+    const def = buttons[+b.dataset.mb];
+    if (!def.run || def.run(ov) !== false) closeModal(ov);
+  });
+  ov.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && e.target.tagName === 'INPUT') {
+      const i = buttons.findIndex(b => b.primary);
+      if (i >= 0) { e.preventDefault(); ov.querySelector(`[data-mb="${i}"]`).click(); }
+    }
+  });
+  if (onMount) onMount(ov);
+  const first = ov.querySelector('.modal-body input, .modal-body textarea');
+  if (first) setTimeout(() => first.focus(), 30);
+}
+function closeModal(ov) {
+  const target = ov || state.modal;
+  if (!target) return;
+  target.remove();
+  if (state.modal === target) state.modal = null;
+}
+function confirmModal({ title, text, okText, onOk }) {
+  openModal({ title, icon: 'trash', body: `<p class="mtext">${text}</p>`, buttons: [{ label: 'Отмена' }, { label: okText || 'Удалить', cls: 'danger', primary: true, run: onOk }] });
+}
+let menuEl = null;
+function hideMenu() { if (menuEl) { menuEl.remove(); menuEl = null; } }
+function showMenu(x, y, items) {
+  hideMenu();
+  const m = document.createElement('div');
+  m.className = 'ctx';
+  m.innerHTML = items.map((it, i) => it.sep ? '<div class="ctx-sep"></div>'
+    : `<button class="ctx-item${it.danger ? ' danger' : ''}" data-i="${i}">${ic(it.icon || '')}<span>${esc(it.label)}</span>${it.kbd ? `<kbd>${it.kbd}</kbd>` : ''}</button>`).join('');
+  document.body.appendChild(m);
+  const r = m.getBoundingClientRect();
+  m.style.left = Math.max(6, Math.min(x, innerWidth - r.width - 6)) + 'px';
+  m.style.top = Math.max(6, Math.min(y, innerHeight - r.height - 6)) + 'px';
+  m.addEventListener('click', e => { const b = e.target.closest('.ctx-item'); if (!b) return; const it = items[+b.dataset.i]; hideMenu(); if (it.run) it.run(); });
+  menuEl = m;
+}
+let toastTimer = null;
+function toast(msg, icon = 'check') {
+  let el = $('#toast');
+  if (!el) { el = document.createElement('div'); el.id = 'toast'; document.body.appendChild(el); }
+  el.className = 'toast';
+  el.innerHTML = `${ic(icon)}<span>${esc(msg)}</span>`;
+  el.hidden = false;
+  el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.hidden = true; }, 2600);
+}
+function copyText(text) {
+  const done = () => toast('Скопировано: ' + text);
+  try { navigator.clipboard.writeText(text).then(done, done); } catch (_) { done(); }
+}
+
+/* ================= Формы ================= */
+function folderOptions(selected, withRoot, exclude) {
+  return (withRoot ? `<option value="">${withRoot}</option>` : '') + folders().filter(f => f.node.id !== exclude)
+    .map(f => `<option value="${f.node.id}"${f.node.id === selected ? ' selected' : ''}>${' '.repeat(f.depth)}${esc(f.node.name)}</option>`).join('');
+}
+function openSessionModal(editId, folderId) {
+  const s = editId ? sess(editId) : null;
+  const e = editId ? findEntry(editId) : null;
+  const cur = folderId != null ? folderId : e && e.parents.length ? e.parents[e.parents.length - 1].id : currentFolderId();
+  const auth = s ? s.auth : 'password';
+  const macroOpts = '<option value="">— ничего —</option>' + state.macros.map(m => `<option value="${m.id}"${s && s.onConnect === m.id ? ' selected' : ''}>${esc(m.name)}</option>`).join('');
+  const body = `<div class="form">
+    <div class="row2"><label class="fld grow"><span>Название</span><input name="name" value="${attr(s ? s.name : '')}" placeholder="например, prod-web"></label>
+      <label class="fld grow"><span>Папка</span><select name="folder">${folderOptions(cur, 'Без папки')}</select></label></div>
+    <div class="row2"><label class="fld grow"><span>Адрес сервера</span><input name="host" class="mono" value="${attr(s ? s.host : '')}" placeholder="203.0.113.10 или example.com"></label>
+      <label class="fld w90"><span>Порт</span><input name="port" class="mono" value="${s ? s.port : 22}"></label></div>
+    <label class="fld"><span>Пользователь</span><input name="user" class="mono" value="${attr(s ? s.user : 'root')}"></label>
+    <div class="fld"><span>Вход</span><div class="seg seg-wide" id="authSeg">
+      <button type="button" data-v="password" class="${auth === 'password' ? 'on' : ''}">${ic('lock')}Пароль</button>
+      <button type="button" data-v="key" class="${auth === 'key' ? 'on' : ''}">${ic('key')}SSH-ключ</button></div></div>
+    <div class="fld" data-auth="password"${auth === 'password' ? '' : ' hidden'}><span>Пароль</span><div class="pw"><input name="password" type="password" value="${s ? 'saved-password' : ''}" placeholder="сохранится в зашифрованном виде"><button type="button" class="icon-btn" data-eye title="Показать">${ic('eye')}</button></div></div>
+    <div class="fld" data-auth="key"${auth === 'key' ? '' : ' hidden'}><span>Файл ключа</span><div class="pw"><input name="key" class="mono" value="~/.ssh/id_ed25519"><button type="button" class="btn sm" data-browse>Обзор…</button></div></div>
+    <div class="row2"><label class="fld grow"><span>Начальная папка</span><input name="startDir" class="mono" placeholder="домашняя"></label>
+      <label class="fld grow"><span>После входа выполнить</span><select name="onConnect">${macroOpts}</select></label></div>
+    <p class="note">${ic('lock')}<span>Пароли и ключи хранятся в защищённом хранилище Windows, отдельно от списка сессий.</span></p>
+  </div>`;
+  const save = (ov, connect) => {
+    const v = n => ov.querySelector(`[name="${n}"]`).value.trim();
+    const hostInput = ov.querySelector('[name="host"]');
+    if (!v('host')) { hostInput.classList.add('invalid'); hostInput.focus(); return false; }
+    const data = { name: v('name') || v('host'), host: v('host'), port: parseInt(v('port'), 10) || 22, user: v('user') || 'root', auth: ov.querySelector('#authSeg .on').dataset.v, onConnect: v('onConnect') };
+    let id = editId;
+    if (s) {
+      Object.assign(s, data);
+      const parentNow = e.parents.length ? e.parents[e.parents.length - 1].id : '';
+      if (parentNow !== v('folder')) { const list = containerOf(id); list.splice(list.indexOf(s), 1); insertInFolder(s, v('folder')); }
+    } else {
+      id = nid('s-');
+      insertInFolder(Object.assign({ type: 'session', id }, data), v('folder'));
+    }
+    state.selectedSession = id;
+    renderAll();
+    toast(s ? 'Сессия сохранена' : 'Сессия создана');
+    if (connect) openSession(id);
+  };
+  openModal({
+    title: s ? 'Сессия «' + s.name + '»' : 'Новая сессия', icon: 'server', body, width: 540,
+    buttons: [
+      ...(s ? [{ label: 'Удалить', cls: 'left danger-text', run: () => askDeleteSession(editId) }] : []),
+      { label: 'Отмена' },
+      { label: 'Сохранить', run: ov => save(ov, false) },
+      { label: 'Сохранить и подключиться', cls: 'primary', primary: true, run: ov => save(ov, true) }
+    ],
+    onMount: ov => {
+      ov.querySelector('#authSeg').addEventListener('click', ev => {
+        const b = ev.target.closest('button');
+        if (!b) return;
+        $$('#authSeg button', ov).forEach(x => x.classList.toggle('on', x === b));
+        $$('[data-auth]', ov).forEach(x => { x.hidden = x.dataset.auth !== b.dataset.v; });
+      });
+      ov.querySelector('[data-eye]').addEventListener('click', () => { const i = ov.querySelector('[name="password"]'); i.type = i.type === 'password' ? 'text' : 'password'; });
+      ov.querySelector('[data-browse]').addEventListener('click', () => toast('Откроется окно выбора файла ключа', 'info'));
+    }
+  });
+}
+function askDeleteSession(id) {
+  const s = sess(id);
+  confirmModal({
+    title: 'Удалить сессию?',
+    text: `Сессия <b>${esc(s.name)}</b> (${esc(s.user)}@${esc(s.host)}) будет удалена из списка вместе с сохранённым паролем.`,
+    onOk: () => { removeSession(id); toast('Сессия удалена'); }
+  });
+}
+function openFolderModal(editId, parentId) {
+  const f = editId ? sess(editId) : null;
+  const body = `<div class="form"><label class="fld"><span>Название папки</span><input name="name" value="${attr(f ? f.name : '')}" placeholder="например, Клиенты"></label>
+    ${f ? '' : `<label class="fld"><span>Внутри</span><select name="parent">${folderOptions(parentId != null ? parentId : currentFolderId(), 'Корень')}</select></label>`}</div>`;
+  openModal({
+    title: f ? 'Переименовать папку' : 'Новая папка', icon: 'folder', body, width: 420,
+    buttons: [{ label: 'Отмена' }, {
+      label: f ? 'Сохранить' : 'Создать', cls: 'primary', primary: true, run: ov => {
+        const name = ov.querySelector('[name="name"]').value.trim();
+        if (!name) { ov.querySelector('[name="name"]').classList.add('invalid'); return false; }
+        if (f) f.name = name;
+        else insertInFolder({ type: 'folder', id: nid('f-'), name, open: true, children: [] }, ov.querySelector('[name="parent"]').value);
+        renderSessions(); renderMacros();
+        toast(f ? 'Папка переименована' : 'Папка создана');
+      }
+    }]
+  });
+}
+function openMacroModal(editId) {
+  const m = editId ? state.macros.find(x => x.id === editId) : null;
+  const scopeVal = m ? (m.scope.type === 'all' ? 'all' : m.scope.type + ':' + m.scope.id) : 'all';
+  const scopeOpts = `<option value="all">Во всех сессиях</option><optgroup label="Папка">`
+    + folders().map(f => `<option value="folder:${f.node.id}"${scopeVal === 'folder:' + f.node.id ? ' selected' : ''}>${' '.repeat(f.depth)}${esc(f.node.name)}</option>`).join('')
+    + '</optgroup><optgroup label="Только одна сессия">'
+    + allSessions().map(x => `<option value="session:${x.id}"${scopeVal === 'session:' + x.id ? ' selected' : ''}>${esc(x.name)}</option>`).join('') + '</optgroup>';
+  const body = `<div class="form">
+    <label class="fld"><span>Название</span><input name="name" value="${attr(m ? m.name : '')}" placeholder="например, Обновить проект"></label>
+    <label class="fld"><span>Команды — по одной на строку</span><textarea name="cmds" class="mono" rows="5" spellcheck="false" placeholder="cd /root/app&#10;git pull&#10;docker compose up -d --build">${esc(m ? m.commands.join('\n') : '')}</textarea></label>
+    <label class="check"><input type="checkbox" name="enter"${!m || m.enter !== false ? ' checked' : ''}>Нажимать Enter после каждой строки</label>
+    <div class="row2"><label class="fld grow"><span>Где показывать</span><select name="scope">${scopeOpts}</select></label>
+      <label class="fld grow"><span>Горячая клавиша</span><input name="hotkey" class="mono" value="${attr(m ? m.hotkey : '')}" placeholder="Ctrl+Alt+3"></label></div>
+    <p class="note">${ic('bolt')}<span>Макрос печатает команды в активный терминал — как будто вы ввели их сами. Он виден только в сессиях, которые подходят под «Где показывать».</span></p>
+  </div>`;
+  openModal({
+    title: m ? 'Макрос «' + m.name + '»' : 'Новый макрос', icon: 'bolt', body, width: 520,
+    buttons: [
+      ...(m ? [{ label: 'Удалить', cls: 'left danger-text', run: () => { state.macros = state.macros.filter(x => x.id !== m.id); renderMacros(); toast('Макрос удалён'); } }] : []),
+      { label: 'Отмена' },
+      { label: 'Сохранить', cls: 'primary', primary: true, run: ov => {
+        const name = ov.querySelector('[name="name"]').value.trim();
+        const cmds = ov.querySelector('[name="cmds"]').value.split('\n').map(x => x.trim()).filter(Boolean);
+        if (!name) { ov.querySelector('[name="name"]').classList.add('invalid'); return false; }
+        if (!cmds.length) { toast('Добавьте хотя бы одну команду', 'info'); return false; }
+        const sv = ov.querySelector('[name="scope"]').value;
+        const scope = sv === 'all' ? { type: 'all' } : { type: sv.split(':')[0], id: sv.split(':')[1] };
+        const data = { name, commands: cmds, enter: ov.querySelector('[name="enter"]').checked, scope, hotkey: ov.querySelector('[name="hotkey"]').value.trim() };
+        if (m) Object.assign(m, data); else state.macros.push(Object.assign({ id: nid('m') }, data));
+        renderMacros();
+        toast(m ? 'Макрос сохранён' : 'Макрос создан');
+      } }
+    ]
+  });
+}
+
+/* ================= Контекстные меню ================= */
+function sessionMenu(x, y, id) {
+  const s = sess(id);
+  showMenu(x, y, [
+    { label: 'Подключиться', icon: 'plug', kbd: 'Enter', run: () => openSession(id) },
+    { label: 'Изменить…', icon: 'edit', run: () => openSessionModal(id) },
+    { label: 'Дублировать', icon: 'copy', run: () => {
+      const list = containerOf(id), copy = Object.assign({}, s, { id: nid('s-'), name: s.name + ' (копия)' });
+      list.splice(list.indexOf(s) + 1, 0, copy);
+      state.selectedSession = copy.id; renderSessions(); toast('Сессия скопирована');
+    } },
+    { label: 'Копировать адрес', icon: 'copy', run: () => copyText(s.user + '@' + s.host) },
+    { sep: true },
+    { label: 'Удалить', icon: 'trash', danger: true, run: () => askDeleteSession(id) }
+  ]);
+}
+function folderMenu(x, y, id) {
+  const f = sess(id);
+  showMenu(x, y, [
+    { label: 'Новая сессия здесь', icon: 'plus', run: () => openSessionModal(null, id) },
+    { label: 'Новая папка внутри', icon: 'folderPlus', run: () => openFolderModal(null, id) },
+    { label: 'Переименовать', icon: 'edit', run: () => openFolderModal(id) },
+    { sep: true },
+    { label: 'Удалить папку', icon: 'trash', danger: true, run: () => {
+      if (f.children.length) { toast('Папка не пуста — сначала перенесите или удалите сессии', 'info'); return; }
+      const list = containerOf(id); list.splice(list.indexOf(f), 1); renderSessions(); toast('Папка удалена');
+    } }
+  ]);
+}
+function startCreate(sid, parent, mode) {
+  state.files[sid].expanded.add(parent);
+  state.editing = { sid, mode, parent };
+  renderFiles();
+}
+function startCreateHere(mode) {
+  const sid = activeSid();
+  if (!sid || !isConnected(sid)) return;
+  const fv = state.files[sid], fs = state.fs[sid];
+  let parent = fv.root;
+  if (fv.sel && fv.sel.startsWith(fv.root === '/' ? '/' : fv.root + '/')) {
+    const n = getNode(fs, fv.sel);
+    if (n) parent = n.type === 'dir' ? fv.sel : parentPath(fv.sel);
+  }
+  startCreate(sid, parent, mode);
+}
+function commitEdit(value) {
+  const ed = state.editing;
+  if (!ed) return;
+  state.editing = null;
+  const name = value.trim();
+  const fs = state.fs[ed.sid];
+  if (!name) { renderFiles(); return; }
+  if (name.includes('/')) { toast('Имя не может содержать «/»', 'info'); renderFiles(); return; }
+  if (ed.mode === 'rename') {
+    const node = getNode(fs, ed.path), par = getNode(fs, parentPath(ed.path));
+    if (name === node.name) { renderFiles(); return; }
+    if (par.children.some(c => c.name === name)) { toast('Такое имя уже есть', 'info'); renderFiles(); return; }
+    const newPath = joinPath(parentPath(ed.path), name);
+    node.name = name;
+    state.tabs.forEach(t => { if (t.kind === 'file' && t.sid === ed.sid && (t.path === ed.path || t.path.startsWith(ed.path + '/'))) t.path = newPath + t.path.slice(ed.path.length); });
+    const fv = state.files[ed.sid];
+    fv.expanded = new Set(Array.from(fv.expanded).map(p => p === ed.path || p.startsWith(ed.path + '/') ? newPath + p.slice(ed.path.length) : p));
+    fv.sel = newPath;
+    state.paneKey = '';
+    renderAll();
+    toast('Переименовано: ' + name);
+    return;
+  }
+  const par = getNode(fs, ed.parent);
+  if (par.children.some(c => c.name === name)) { toast('Такое имя уже есть', 'info'); renderFiles(); return; }
+  par.children.push(ed.mode === 'newdir' ? D(name) : F(name, ''));
+  const p = joinPath(ed.parent, name);
+  state.files[ed.sid].sel = p;
+  if (ed.mode === 'newfile') { openFile(ed.sid, p); toast('Файл создан: ' + p); }
+  else { renderFiles(); toast('Папка создана: ' + p); }
+}
+function fileMenu(x, y, path) {
+  const sid = activeSid();
+  if (!sid || !isConnected(sid)) return;
+  const fs = state.fs[sid], fv = state.files[sid];
+  if (!path) {
+    showMenu(x, y, [
+      { label: 'Новый файл', icon: 'filePlus', run: () => startCreate(sid, fv.root, 'newfile') },
+      { label: 'Новая папка', icon: 'folderPlus', run: () => startCreate(sid, fv.root, 'newdir') },
+      { label: 'Загрузить с компьютера…', icon: 'upload', run: () => toast('Откроется окно выбора файлов', 'info') },
+      { sep: true },
+      { label: 'Обновить', icon: 'refresh', run: () => toast('Список файлов обновлён') }
+    ]);
+    return;
+  }
+  const n = getNode(fs, path);
+  if (!n) return;
+  fv.sel = path; renderFiles();
+  const common = [
+    { label: 'Копировать путь', icon: 'copy', run: () => copyText(path) },
+    { sep: true },
+    { label: 'Переименовать', icon: 'edit', kbd: 'F2', run: () => { state.editing = { sid, mode: 'rename', path }; renderFiles(); } },
+    { label: 'Удалить', icon: 'trash', kbd: 'Del', danger: true, run: () => askDeletePath(sid, path) }
+  ];
+  if (n.type === 'dir') {
+    showMenu(x, y, [
+      { label: fv.expanded.has(path) ? 'Свернуть' : 'Раскрыть', icon: 'chev', kbd: 'Enter', run: () => { fv.expanded.has(path) ? fv.expanded.delete(path) : fv.expanded.add(path); renderFiles(); } },
+      { label: 'Перейти сюда в терминале', icon: 'term', run: () => goTerminal(sid, path) },
+      { label: 'Показать как корень дерева', icon: 'target', run: () => { fv.root = path; renderFiles(); renderStatus(); } },
+      { sep: true },
+      { label: 'Новый файл здесь', icon: 'filePlus', run: () => startCreate(sid, path, 'newfile') },
+      { label: 'Новая папка здесь', icon: 'folderPlus', run: () => startCreate(sid, path, 'newdir') },
+      { label: 'Загрузить сюда…', icon: 'upload', run: () => toast('Откроется окно выбора файлов', 'info') },
+      { label: 'Скачать папку', icon: 'download', run: () => toast('Скачивание в «Загрузки»: ' + n.name + '.zip') },
+      ...common
+    ]);
+  } else {
+    showMenu(x, y, [
+      { label: 'Открыть в редакторе', icon: 'edit', kbd: 'Enter', run: () => openFile(sid, path) },
+      { label: 'Показать в терминале (cat)', icon: 'term', run: () => goTerminal(sid, parentPath(path), 'cat ' + n.name) },
+      { label: 'Скачать на компьютер', icon: 'download', run: () => toast('Скачивание в «Загрузки»: ' + n.name) },
+      ...common
+    ]);
+  }
+}
+function askDeletePath(sid, path) {
+  const n = getNode(state.fs[sid], path);
+  confirmModal({
+    title: n.type === 'dir' ? 'Удалить папку?' : 'Удалить файл?',
+    text: `<b class="mono">${esc(path)}</b> будет удалён${n.type === 'dir' ? ' вместе со всем содержимым' : ''} на сервере <b>${esc(sess(sid).name)}</b>. Отменить это нельзя.`,
+    onOk: () => removePath(sid, path)
+  });
+}
+function goTerminal(sid, dir, then) {
+  const tab = termTabOf(sid);
+  if (!tab) return;
+  activate(tab.id);
+  const cmds = ['cd ' + dir];
+  if (then) cmds.push(then);
+  typeCommands(sid, cmds, true);
+}
+function handleFilesKey(e) {
+  const sid = activeSid();
+  if (!sid || !isConnected(sid)) return;
+  const fv = state.files[sid];
+  if (!fv.sel) return;
+  const n = getNode(state.fs[sid], fv.sel);
+  if (!n) return;
+  if (e.key === 'F2') { e.preventDefault(); state.editing = { sid, mode: 'rename', path: fv.sel }; renderFiles(); }
+  else if (e.key === 'Delete') { e.preventDefault(); askDeletePath(sid, fv.sel); }
+  else if (e.key === 'Enter') {
+    e.preventDefault();
+    if (n.type === 'file') openFile(sid, fv.sel);
+    else { fv.expanded.has(fv.sel) ? fv.expanded.delete(fv.sel) : fv.expanded.add(fv.sel); renderFiles(); }
+  }
+}
+
+/* ================= Действия кнопок ================= */
+function applyMock() {
+  document.documentElement.dataset.theme = state.theme;
+  app.dataset.layout = state.layout;
+  app.dataset.side = state.side;
+  $$('[data-act="theme"]').forEach(b => b.classList.toggle('on', b.dataset.v === state.theme));
+  $$('[data-act="layout"]').forEach(b => b.classList.toggle('on', b.dataset.v === state.layout));
+  $$('[data-act="side"]').forEach(b => b.classList.toggle('on', b.dataset.v === state.side));
+  try { history.replaceState(null, '', '#theme=' + state.theme + '&layout=' + state.layout); } catch (_) { /* file:// в некоторых браузерах */ }
+}
+function focusSearch() {
+  if (state.layout === 'classic' && state.side !== 'sessions') { state.side = 'sessions'; applyMock(); }
+  const i = $('#sessFilter'); i.focus(); i.select();
+}
+const ACTIONS = {
+  'new-session': () => openSessionModal(),
+  'new-folder': () => openFolderModal(),
+  'collapse': () => { walk(SESSIONS, n => { if (n.type === 'folder') n.open = false; }); renderSessions(); },
+  'connect-selected': () => {
+    const s = state.selectedSession && sess(state.selectedSession);
+    if (s && s.type === 'session') openSession(s.id); else toast('Выберите сессию в дереве', 'info');
+  },
+  'theme': b => { state.theme = b.dataset.v; state.layout = DEFAULT_LAYOUT[state.theme]; applyMock(); },
+  'layout': b => { state.layout = b.dataset.v; applyMock(); },
+  'side': b => { state.side = b.classList.contains('tb') && state.side === b.dataset.v ? 'sessions' : b.dataset.v; applyMock(); },
+  'search': () => focusSearch(),
+  'up': () => { const fv = state.files[activeSid()]; if (fv && fv.root !== '/') { fv.root = parentPath(fv.root); renderFiles(); renderStatus(); } },
+  'crumb': b => { const fv = state.files[activeSid()]; if (fv) { fv.root = b.dataset.path; renderFiles(); renderStatus(); } },
+  'follow': () => {
+    state.follow = !state.follow;
+    const sid = activeSid();
+    if (sid) syncFilesToCwd(sid);
+    renderFiles(); renderStatus();
+    toast(state.follow ? 'Дерево файлов следует за папкой терминала' : 'Дерево файлов больше не следует за терминалом', 'info');
+  },
+  'refresh': () => toast('Список файлов обновлён'),
+  'newfile': () => startCreateHere('newfile'),
+  'newdir': () => startCreateHere('newdir'),
+  'upload': () => toast('Загрузка: перетащите файлы с компьютера в дерево или выберите их в окне', 'info'),
+  'save': () => saveActive(),
+  'reload': () => {
+    const tab = activeTabObj();
+    if (!tab || tab.kind !== 'file') return;
+    tab.draft = null; tab.dirty = false;
+    renderPane(true); renderTabs(); renderStatus();
+    toast('Файл перечитан с сервера');
+  },
+  'new-macro': () => openMacroModal(),
+  'reconnect': () => { const sid = activeSid(); if (sid) reconnect(sid); },
+  'hint-close': () => { const h = $('#hint'); if (h) h.remove(); try { sessionStorage.setItem('termion-hint', '1'); } catch (_) { /* ничего */ } },
+  'toast': b => toast(b.dataset.msg, 'info'),
+  'split': () => toast('Два терминала рядом — можно добавить позже', 'info'),
+  'settings': () => toast('Настройки: шрифт, тема терминала, горячие клавиши', 'info')
+};
+
+/* ================= События ================= */
+function hotkeyOf(e) {
+  const k = e.key.length === 1 ? e.key.toUpperCase() : e.key;
+  return [e.ctrlKey && 'Ctrl', e.altKey && 'Alt', e.shiftKey && 'Shift', k].filter(Boolean).join('+');
+}
+function onEditorInput(code) {
+  const tab = activeTabObj();
+  if (!tab || tab.kind !== 'file') return;
+  tab.draft = code.innerText.replace(/\n$/, '');
+  tab.dirty = true;
+  const g = $('#pane .gutter');
+  if (g) g.textContent = Array.from({ length: tab.draft.split('\n').length }, (_, i) => i + 1).join('\n');
+  const sb = $('#pane [data-act="save"]');
+  if (sb) sb.disabled = false;
+  renderTabs(); renderStatus();
+}
+function bindEvents() {
+  document.addEventListener('click', e => {
+    const b = e.target.closest('[data-act]');
+    if (b && ACTIONS[b.dataset.act]) ACTIONS[b.dataset.act](b, e);
+  });
+  document.addEventListener('mousedown', e => { if (menuEl && !menuEl.contains(e.target)) hideMenu(); });
+  window.addEventListener('blur', hideMenu);
+  window.addEventListener('resize', hideMenu);
+
+  const sp = $('#sessionsPanel');
+  sp.addEventListener('mousedown', () => setFocus('sessions'));
+  sp.addEventListener('click', e => {
+    const f = e.target.closest('.row.folder');
+    if (f) { const n = sess(f.dataset.folder); n.open = !n.open; state.selectedSession = n.id; renderSessions(); return; }
+    const r = e.target.closest('.row.sess');
+    if (r) { state.selectedSession = r.dataset.sess; renderSessions(); }
+  });
+  sp.addEventListener('dblclick', e => { const r = e.target.closest('.row.sess'); if (r) openSession(r.dataset.sess); });
+  sp.addEventListener('contextmenu', e => {
+    if (e.target.closest('input')) return;
+    e.preventDefault();
+    const r = e.target.closest('.row.sess'), f = e.target.closest('.row.folder');
+    if (r) { state.selectedSession = r.dataset.sess; renderSessions(); sessionMenu(e.clientX, e.clientY, r.dataset.sess); }
+    else if (f) { state.selectedSession = f.dataset.folder; renderSessions(); folderMenu(e.clientX, e.clientY, f.dataset.folder); }
+    else showMenu(e.clientX, e.clientY, [{ label: 'Новая сессия', icon: 'plus', run: () => openSessionModal(null, '') }, { label: 'Новая папка', icon: 'folderPlus', run: () => openFolderModal(null, '') }]);
+  });
+  sp.addEventListener('input', e => { if (e.target.id === 'sessFilter') { state.filter = e.target.value; renderSessions(); } });
+
+  const fp = $('#filesPanel');
+  fp.addEventListener('mousedown', () => setFocus('files'));
+  fp.addEventListener('click', e => {
+    if (e.target.closest('[data-act]') || e.target.closest('.inline')) return;
+    const row = e.target.closest('.row[data-path]');
+    if (!row) return;
+    const fv = state.files[activeSid()], p = row.dataset.path;
+    fv.sel = p;
+    if (row.dataset.kind === 'dir') { if (fv.expanded.has(p)) fv.expanded.delete(p); else fv.expanded.add(p); }
+    renderFiles();
+  });
+  fp.addEventListener('dblclick', e => { const row = e.target.closest('.row[data-kind="file"]'); if (row) openFile(activeSid(), row.dataset.path); });
+  fp.addEventListener('contextmenu', e => {
+    if (e.target.closest('input')) return;
+    e.preventDefault();
+    const row = e.target.closest('.row[data-path]');
+    fileMenu(e.clientX, e.clientY, row ? row.dataset.path : null);
+  });
+  fp.addEventListener('keydown', e => {
+    if (e.target.id !== 'inlineEdit') return;
+    if (e.key === 'Enter') { e.preventDefault(); commitEdit(e.target.value); }
+    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); state.editing = null; renderFiles(); }
+  });
+  fp.addEventListener('focusout', e => {
+    if (e.target.id !== 'inlineEdit') return;
+    setTimeout(() => { if (state.editing && document.activeElement && document.activeElement.id !== 'inlineEdit') { state.editing = null; renderFiles(); } }, 150);
+  });
+
+  const tabs = $('#tabs');
+  tabs.addEventListener('click', e => {
+    const x = e.target.closest('[data-close]');
+    if (x) { closeTab(x.dataset.close); return; }
+    const tb = e.target.closest('.tab');
+    if (tb) activate(tb.dataset.tab);
+  });
+  tabs.addEventListener('auxclick', e => { if (e.button === 1) { const tb = e.target.closest('.tab'); if (tb) closeTab(tb.dataset.tab); } });
+
+  const pane = $('#pane');
+  pane.addEventListener('mousedown', () => setFocus('pane'));
+  pane.addEventListener('input', e => { const code = e.target.closest && e.target.closest('.code'); if (code) onEditorInput(code); });
+
+  const mac = $('#macros');
+  mac.addEventListener('click', e => {
+    const c = e.target.closest('[data-macro]');
+    if (!c) return;
+    if (c.dataset.off) { toast('Сначала подключитесь к сессии', 'info'); return; }
+    runMacro(c.dataset.macro);
+  });
+  mac.addEventListener('contextmenu', e => {
+    const c = e.target.closest('[data-macro]');
+    if (!c) return;
+    e.preventDefault();
+    const id = c.dataset.macro, m = state.macros.find(x => x.id === id);
+    showMenu(e.clientX, e.clientY, [
+      { label: 'Запустить', icon: 'play', kbd: m.hotkey || '', run: () => runMacro(id) },
+      { label: 'Изменить…', icon: 'edit', run: () => openMacroModal(id) },
+      { label: 'Дублировать', icon: 'copy', run: () => { state.macros.push(Object.assign({}, m, { id: nid('m'), name: m.name + ' (копия)', hotkey: '' })); renderMacros(); } },
+      { sep: true },
+      { label: 'Удалить', icon: 'trash', danger: true, run: () => { state.macros = state.macros.filter(x => x.id !== id); renderMacros(); toast('Макрос удалён'); } }
+    ]);
+  });
+
+  document.addEventListener('keydown', e => {
+    const k = e.key;
+    if (k === 'Escape') {
+      if (state.modal) { closeModal(); return; }
+      if (menuEl) { hideMenu(); return; }
+    }
+    if (state.modal) return;
+    const mod = e.ctrlKey || e.metaKey;
+    if (e.ctrlKey && e.altKey) {
+      const hk = hotkeyOf(e).toLowerCase();
+      const m = state.macros.find(x => x.hotkey && x.hotkey.toLowerCase() === hk);
+      if (m) { e.preventDefault(); runMacro(m.id); return; }
+    }
+    if (mod && k.toLowerCase() === 's') { e.preventDefault(); saveActive(); return; }
+    if (mod && k.toLowerCase() === 'k') { e.preventDefault(); focusSearch(); return; }
+    const inField = e.target.closest && e.target.closest('input, textarea, select, [contenteditable]');
+    if (inField) {
+      if (k === 'Tab' && e.target.closest('.code')) { e.preventDefault(); document.execCommand('insertText', false, '    '); }
+      return;
+    }
+    if (e.target.closest && e.target.closest('button') && (k === 'Enter' || k === ' ')) return;
+    if (state.focusArea === 'files') { handleFilesKey(e); return; }
+    if (state.focusArea === 'sessions') {
+      if (k === 'Enter' && state.selectedSession) { e.preventDefault(); openSession(state.selectedSession); }
+      return;
+    }
+    const tab = activeTabObj();
+    if (!tab || tab.kind !== 'term') return;
+    const t = state.terms[tab.sid];
+    if (!t) return;
+    if (t.closed) { if (k === 'Enter') { e.preventDefault(); reconnect(tab.sid); } return; }
+    if (t.busy) { e.preventDefault(); return; }
+    if (mod && k.toLowerCase() === 'l') { e.preventDefault(); t.lines = []; renderPane(); return; }
+    if (mod && k.toLowerCase() === 'c') {
+      if (String(window.getSelection())) return;
+      e.preventDefault(); out(t, promptHTML(tab.sid) + esc(t.input) + '^C'); t.input = ''; renderPane(); return;
+    }
+    if (mod || e.altKey) return;
+    if (k === 'Enter') { e.preventDefault(); execInput(tab.sid); }
+    else if (k === 'Backspace') { e.preventDefault(); t.input = t.input.slice(0, -1); renderPane(); }
+    else if (k === 'ArrowUp') {
+      e.preventDefault();
+      if (!t.hist.length) return;
+      t.hi = t.hi < 0 ? t.hist.length - 1 : Math.max(0, t.hi - 1);
+      t.input = t.hist[t.hi]; renderPane();
+    } else if (k === 'ArrowDown') {
+      e.preventDefault();
+      if (t.hi < 0) return;
+      t.hi++;
+      if (t.hi >= t.hist.length) { t.hi = -1; t.input = ''; } else t.input = t.hist[t.hi];
+      renderPane();
+    } else if (k === 'Tab') { e.preventDefault(); complete(tab.sid); }
+    else if (k.length === 1) { e.preventDefault(); t.input += k; t.hi = -1; renderPane(); }
+  });
+  document.addEventListener('paste', e => {
+    if (state.modal || (e.target.closest && e.target.closest('input, textarea, [contenteditable]'))) return;
+    const tab = activeTabObj();
+    if (!tab || tab.kind !== 'term' || state.focusArea !== 'pane') return;
+    const t = state.terms[tab.sid];
+    if (!t || t.closed || t.busy) return;
+    const text = (e.clipboardData || window.clipboardData).getData('text');
+    if (!text) return;
+    e.preventDefault();
+    t.input += text.replace(/\r?\n/g, ' ');
+    renderPane();
+  });
+}
+
+/* ================= Каркас и запуск ================= */
+function buildChrome() {
+  $('#titlebar').innerHTML = `
+    <div class="brand">${logo(18)}<span class="brand-name">Termion</span></div>
+    <button class="search-trigger" data-act="search">${ic('search')}<span>Поиск сессий…</span><kbd>Ctrl K</kbd></button>
+    <div class="mock" title="Переключатель вариантов макета — в программе его не будет">
+      <span class="mock-label">Макет</span>
+      <div class="seg">${[['graphite', 'Графит'], ['classic', 'Классика'], ['light', 'Светлая']].map(([v, l]) => `<button data-act="theme" data-v="${v}">${l}</button>`).join('')}</div>
+      <div class="seg">${[['stacked', 'Слева стопкой'], ['classic', 'Как в MobaXterm'], ['ide', 'Файлы справа']].map(([v, l]) => `<button data-act="layout" data-v="${v}">${l}</button>`).join('')}</div>
+    </div>
+    <div class="winctl"><button data-act="toast" data-msg="Свернуть окно" title="Свернуть">${ic('min')}</button><button data-act="toast" data-msg="Развернуть окно" title="Развернуть">${ic('max')}</button><button class="close" data-act="toast" data-msg="Закрыть Termion" title="Закрыть">${ic('x')}</button></div>`;
+  $('#toolbar').innerHTML = `
+    <button class="tb" data-act="new-session">${ic('plus')}<span>Сессия</span></button>
+    <button class="tb" data-act="connect-selected">${ic('plug')}<span>Подключить</span></button>
+    <div class="tb-sep"></div>
+    <button class="tb" data-act="side" data-v="files">${ic('folder')}<span>Файлы</span></button>
+    <button class="tb" data-act="new-macro">${ic('bolt')}<span>Макрос</span></button>
+    <button class="tb" data-act="split">${ic('split')}<span>Разделить</span></button>
+    <div class="tb-sep"></div>
+    <button class="tb" data-act="settings">${ic('gear')}<span>Настройки</span></button>`;
+  $('#rail').innerHTML = `
+    <button class="rail-btn" data-act="side" data-v="sessions" title="Сессии">${ic('server')}</button>
+    <button class="rail-btn" data-act="side" data-v="files" title="Файлы на сервере">${ic('folder')}<i class="badge" id="railBadge"></i></button>
+    <div class="spacer"></div>
+    <button class="rail-btn" data-act="settings" title="Настройки">${ic('gear')}</button>`;
+  $('#sessionsPanel').innerHTML = `
+    <div class="panel-head"><span class="ph-title">Сессии</span><span class="ph-count" id="sessCount"></span>
+      <div class="ph-actions">
+        <button class="icon-btn" data-act="new-session" title="Новая сессия">${ic('plus')}</button>
+        <button class="icon-btn" data-act="new-folder" title="Новая папка">${ic('folderPlus')}</button>
+        <button class="icon-btn" data-act="collapse" title="Свернуть все папки">${ic('collapse')}</button>
+      </div></div>
+    <label class="search">${ic('search')}<input id="sessFilter" placeholder="Поиск сессий…" autocomplete="off" spellcheck="false"></label>
+    <div class="tree" id="sessTree"></div>`;
+}
+function showHint() {
+  try { if (sessionStorage.getItem('termion-hint')) return; } catch (_) { /* ничего */ }
+  const h = document.createElement('div');
+  h.className = 'hint'; h.id = 'hint';
+  h.innerHTML = `<h4>${logo(16)}Это кликабельный макет</h4><ul>
+    <li><b>Двойной клик</b> по сессии — подключиться</li>
+    <li>Файлы: клик раскрывает папку, <b>двойной клик</b> открывает файл в редакторе</li>
+    <li><b>Правый клик</b> по файлу, сессии или макросу — меню</li>
+    <li>В терминале можно печатать: <span class="mono">ls, cd, cat, nano, df -h, help</span></li>
+    <li>Вверху справа — <b>стиль и раскладка</b></li></ul>
+    <p class="hint-note">Серверы и данные вымышленные.</p>
+    <button class="btn sm primary" data-act="hint-close">Понятно</button>`;
+  document.body.appendChild(h);
+}
+function init() {
+  const hp = new URLSearchParams(location.hash.slice(1));
+  const th = hp.get('theme');
+  if (DEFAULT_LAYOUT[th]) { state.theme = th; state.layout = DEFAULT_LAYOUT[th]; }
+  const ly = hp.get('layout');
+  if (['stacked', 'classic', 'ide'].includes(ly)) state.layout = ly;
+  const view = (hp.get('view') || '').split(',');
+  if (view.includes('files')) state.side = 'files';
+  buildChrome();
+  applyMock();
+  bindEvents();
+  openSession('s-alpha', { silent: true });
+  scripted('s-alpha', 'docker ps');
+  openSession('s-web01', { silent: true, activate: false });
+  scripted('s-web01', 'ls -la');
+  state.files['s-alpha'].expanded.add('/root/app');
+  openFile('s-alpha', '/root/deploy.sh', { silent: true, activate: false });
+  state.files['s-alpha'].sel = '/root/deploy.sh';
+  state.selectedSession = 's-alpha';
+  state.activeTab = termTabOf('s-alpha').id;
+  renderAll();
+  setFocus('pane');
+  if (!view.includes('nohint')) showHint();
+  if (view.includes('file')) activate(state.tabs.find(x => x.kind === 'file').id);
+  if (view.includes('session')) openSessionModal();
+  if (view.includes('macro')) openMacroModal('m1');
+  if (view.includes('menu')) {
+    setTimeout(() => {
+      const r = $('.row[data-path="/root/deploy.sh"]');
+      if (r) { const b = r.getBoundingClientRect(); fileMenu(b.left + 70, b.top + b.height / 2, '/root/deploy.sh'); }
+    }, 400);
+  }
+}
+init();
+})();
+</script>
+</body>
+</html>
