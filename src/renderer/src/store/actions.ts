@@ -1,14 +1,16 @@
 // Действия интерфейса: дерево сессий, вкладки, подключения, настройки, окна и уведомления.
 // Файлы на сервере — в files.ts, редактор — в editors.ts.
 
-import type { AuthMethod, PromptResponse, SessionNode, Settings, TreeNode } from '@shared/types'
+import type { AuthMethod, LocalShell, PromptResponse, SessionNode, Settings, TreeNode } from '@shared/types'
 import { countSessions, findSession, insertNode, locate, moveNode, newId, removeNode, setAllExpanded, updateNode } from '@shared/tree'
+import type { CloseInfo } from '@shared/api'
 import { api, errorText } from '../api'
 import * as editors from '../editor/registry'
 import * as terminals from '../terminal/registry'
-import { getState, isEditor, isTerminal, setState, type DialogState, type MenuEntry, type Tab, type TerminalTab, type Toast } from './app'
+import { getState, isEditor, isLocal, isTerminal, setState, type DialogState, type MenuEntry, type Tab, type TerminalTab, type Toast } from './app'
 import { onEditorCursor, onEditorDirty, saveEditor } from './editors'
 import { dropFilesView, onCwd, onTerminalConnected, onTransfer } from './files'
+import { autorun } from './macros'
 import { forgetServer, startMonitor } from './monitor'
 
 // ---------- уведомления, меню, окна ----------
@@ -148,6 +150,8 @@ export interface SessionInput {
   username: string
   auth: AuthMethod
   keyPath: string
+  /** Макрос после входа (id) или пусто. */
+  onConnect: string
 }
 
 export type PasswordChange = { kind: 'keep' } | { kind: 'set'; value: string } | { kind: 'clear' }
@@ -165,11 +169,16 @@ export async function saveSession(
     const found = locate(tree, editId)
     if (!found || found.node.type !== 'session') throw new Error('Сессия не найдена.')
     id = editId
-    next = updateNode(tree, editId, (n) => ({ ...(n as SessionNode), ...input }))
+    next = updateNode(tree, editId, (n) => {
+      const updated: SessionNode = { ...(n as SessionNode), ...input }
+      if (!input.onConnect) delete updated.onConnect
+      return updated
+    })
     if ((found.parent?.id ?? null) !== parentId) next = moveNode(next, editId, parentId)
   } else {
     id = newId()
-    next = insertNode(tree, { type: 'session', id, ...input }, parentId)
+    const { onConnect, ...fields } = input
+    next = insertNode(tree, { type: 'session', id, ...fields, ...(onConnect ? { onConnect } : {}) }, parentId)
   }
   if (parentId) next = updateNode(next, parentId, (n) => (n.type === 'folder' ? { ...n, expanded: true } : n))
   const oldName = editId ? findSession(tree, editId)?.name : undefined
@@ -312,15 +321,82 @@ export function openSession(sessionId: string): void {
     auth: s.auth,
     cols: 0,
     rows: 0,
-    cwd: null
+    cwd: null,
+    local: null
   }
   setState({ tabs: [...tabs, tab], activeTabId: tab.id, selectedId: sessionId, menu: null })
+}
+
+/** Оболочка по умолчанию: из настроек, иначе первая найденная (PowerShell). */
+export function defaultShell(): LocalShell | null {
+  const { shells, settings } = getState()
+  return shells.find((sh) => sh.id === settings.terminal.defaultShell) ?? shells[0] ?? null
+}
+
+/** Найти оболочки заново (например, после установки WSL или Git). */
+export async function refreshShells(): Promise<LocalShell[]> {
+  try {
+    const shells = await api.local.shells(true)
+    setState({ shells })
+    return shells
+  } catch {
+    return getState().shells
+  }
+}
+
+/** Открыть терминал компьютера: PowerShell, командную строку, Git Bash, WSL… */
+export function openLocal(shellId?: string): void {
+  const shell = (shellId ? getState().shells.find((sh) => sh.id === shellId) : null) ?? defaultShell()
+  if (!shell) {
+    toast('На компьютере не найдено ни одной оболочки', 'error')
+    return
+  }
+  const tabs = getState().tabs
+  const same = tabs.filter((t) => isLocal(t) && t.local.id === shell.id).length
+  const tab: TerminalTab = {
+    kind: 'terminal',
+    id: newId(),
+    sessionId: '',
+    title: same ? `${shell.name} (${same + 1})` : shell.name,
+    connId: null,
+    state: 'idle',
+    info: null,
+    host: '',
+    port: 0,
+    username: '',
+    auth: 'password',
+    cols: 0,
+    rows: 0,
+    cwd: null,
+    local: shell
+  }
+  setState({ tabs: [...tabs, tab], activeTabId: tab.id, menu: null })
+}
+
+/** Подсказка после отключения: как снова подключиться (или запустить терминал заново). */
+const restartHint = (tab: TerminalTab) =>
+  tab.local ? 'Нажмите Enter, чтобы запустить терминал заново.' : 'Нажмите Enter, чтобы подключиться снова.'
+
+async function startLocal(tab: TerminalTab & { local: LocalShell }): Promise<void> {
+  if (tab.connId) api.ssh.disconnect(tab.connId)
+  const connId = newId()
+  const { cols, rows } = terminals.size(tab.id)
+  terminals.bind(tab.id, connId)
+  patchTab<TerminalTab>(tab.id, { connId, state: 'connecting', cols, rows })
+  try {
+    await api.local.open({ connId, shellId: tab.local.id, cols, rows })
+  } catch (err) {
+    terminals.notice(tab.id, 'error', errorText(err))
+    patchTab<TerminalTab>(tab.id, { state: 'failed' })
+    terminals.setDisconnected(tab.id, true, restartHint(tab))
+  }
 }
 
 /** Вызывается реестром терминалов, когда терминал на экране и знает свой размер. */
 export async function connectTab(tabId: string): Promise<void> {
   const tab = terminalTab(tabId)
   if (!tab) return
+  if (isLocal(tab)) return startLocal(tab)
   const s = findSession(getState().tree, tab.sessionId)
   if (!s) {
     terminals.notice(tabId, 'error', 'Эта сессия удалена из списка — подключиться нельзя.')
@@ -370,8 +446,8 @@ export function disconnectTab(tabId: string): void {
   dropPrompts(tab.connId)
   forgetServer(tab.connId)
   patchTab<TerminalTab>(tabId, { state: 'closed' })
-  terminals.notice(tabId, 'info', 'Отключено.')
-  terminals.setDisconnected(tabId, true)
+  terminals.notice(tabId, 'info', tab.local ? 'Терминал завершён.' : 'Отключено.')
+  terminals.setDisconnected(tabId, true, restartHint(tab))
 }
 
 /** Отправить текст в терминал вкладки (для «Перейти сюда в терминале»). */
@@ -448,7 +524,7 @@ export function closeAllTabs(): void {
 export function activateTab(tabId: string): void {
   const tab = tabById(tabId)
   if (!tab) return
-  const sessionId = isTerminal(tab) ? tab.sessionId : terminalTab(tab.ownerId)?.sessionId
+  const sessionId = isTerminal(tab) ? tab.sessionId : terminalTab(tab.ownerId)?.sessionId // у терминала компьютера — пусто
   setState({ activeTabId: tabId, ...(sessionId ? { selectedId: sessionId } : {}) })
   if (isTerminal(tab)) terminals.activate(tabId)
   else editors.focus(tabId)
@@ -464,7 +540,9 @@ export function cycleTab(direction: 1 | -1): void {
 
 export function duplicateTab(tabId: string): void {
   const tab = terminalTab(tabId)
-  if (tab) openSession(tab.sessionId)
+  if (!tab) return
+  if (tab.local) openLocal(tab.local.id)
+  else openSession(tab.sessionId)
 }
 
 // ---------- вопросы от SSH ----------
@@ -504,14 +582,14 @@ export async function resolveAppClose(choice: 'save' | 'discard' | 'cancel'): Pr
   if (choice === 'cancel') focusActive()
 }
 
-async function beforeClose(info: { connections: number }): Promise<boolean> {
+async function beforeClose(info: CloseInfo): Promise<boolean> {
   await flushAll()
   const dirtyIds = getState().tabs.filter((t) => isEditor(t) && t.dirty).map((t) => t.id)
-  if (!info.connections && !dirtyIds.length) return true
+  if (!info.connections && !info.locals && !dirtyIds.length) return true
   closeResolver?.(false)
   return new Promise<boolean>((resolve) => {
     closeResolver = resolve
-    setState({ dialog: { type: 'close-app', connections: info.connections, dirtyIds }, menu: null })
+    setState({ dialog: { type: 'close-app', connections: info.connections, locals: info.locals, dirtyIds }, menu: null })
   })
 }
 
@@ -530,7 +608,11 @@ export async function init(): Promise<void> {
     closeTab,
     isConnected: isTabConnected,
     onResize: (tabId, cols, rows) => patchTab<TerminalTab>(tabId, { cols, rows }),
-    onCwd,
+    // Папка терминала нужна дереву файлов сервера — у терминалов компьютера её не отслеживаем.
+    onCwd: (tabId, hint) => {
+      if (!terminalTab(tabId)?.local) onCwd(tabId, hint)
+    },
+    reconnectLabel: (tabId) => (terminalTab(tabId)?.local ? 'Перезапустить' : 'Переподключиться'),
     showMenu
   })
   editors.configure({
@@ -544,9 +626,12 @@ export async function init(): Promise<void> {
     const tab = tabByConn(connId)
     if (!tab) return
     patchTab<TerminalTab>(tab.id, { state })
-    if (state === 'connected') void onTerminalConnected(tab.id)
+    if (state === 'connected' && !tab.local) {
+      void onTerminalConnected(tab.id)
+      autorun(tab)
+    }
     if (state === 'closed' || state === 'failed') {
-      terminals.setDisconnected(tab.id, true)
+      terminals.setDisconnected(tab.id, true, restartHint(tab))
       forgetServer(connId)
     }
   })
@@ -566,9 +651,15 @@ export async function init(): Promise<void> {
 
   // Окно могли перезагрузить — старые подключения этого окна больше не нужны.
   await api.ssh.reset().catch(() => undefined)
-  const [info, settings, tree] = await Promise.all([api.app.info(), api.settings.load(), api.sessions.load()])
+  const [info, settings, tree, shells, macros] = await Promise.all([
+    api.app.info(),
+    api.settings.load(),
+    api.sessions.load(),
+    api.local.shells().catch(() => []),
+    api.macros.load().catch(() => [])
+  ])
   savedTree = tree
   document.documentElement.dataset.theme = settings.theme
-  setState({ ready: true, info, settings, tree })
+  setState({ ready: true, info, settings, tree, shells, macros })
   for (const text of info.startupNotices) toast(text, 'error', 15000)
 }

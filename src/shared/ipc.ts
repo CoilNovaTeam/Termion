@@ -10,6 +10,8 @@ export const IPC = {
 
   sessionsLoad: 'sessions:load',
   sessionsSave: 'sessions:save',
+  macrosLoad: 'macros:load',
+  macrosSave: 'macros:save',
 
   secretsStatus: 'secrets:status',
   secretsSetPassword: 'secrets:set-password',
@@ -29,6 +31,8 @@ export const IPC = {
   sshDisconnect: 'ssh:disconnect',
   sshReset: 'ssh:reset',
   sshStats: 'ssh:stats',
+  localShells: 'local:shells',
+  localOpen: 'local:open',
   sshPromptResponse: 'ssh:prompt-response',
 
   sftpCall: 'sftp:call',

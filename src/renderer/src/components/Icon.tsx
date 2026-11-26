@@ -19,6 +19,11 @@ const PATHS = {
   home: '<path d="M2.6 7.6L8 3l5.4 4.6"/><path d="M4.2 6.4v6.8h2.9V10h1.8v3.2h2.9V6.4"/>',
   target: '<circle cx="8" cy="8" r="5.3"/><circle cx="8" cy="8" r="1.7"/>',
   wrap: '<path d="M2.6 4.2h10.8M2.6 8h8.6a2.1 2.1 0 0 1 0 4.2H8.4"/><path d="M9.9 10.7l-1.5 1.5 1.5 1.5M2.6 12.2h3.4"/>',
+  bolt: '<path d="M9.2 1.6L3.6 9.1h4.1l-1 5.3 5.7-7.6H8.3z"/>',
+  play: '<path d="M4.8 2.9v10.2L13 8z" fill="currentColor" stroke="none"/>',
+  git: '<path d="M8 1.9l6.1 6.1L8 14.1 1.9 8z"/><circle cx="8" cy="5.4" r="1.05"/><circle cx="8" cy="10.6" r="1.05"/><path d="M8 6.5v3"/>',
+  linux:
+    '<path d="M8 2.2c-1.6 0-2.6 1.3-2.6 3.1 0 1-.2 1.6-.8 2.5-.8 1.2-1.4 2.6-1.4 3.8 0 .7.4 1.2 1 1.4.9.3 2 .8 3.8.8s2.9-.5 3.8-.8c.6-.2 1-.7 1-1.4 0-1.2-.6-2.6-1.4-3.8-.6-.9-.8-1.5-.8-2.5 0-1.8-1-3.1-2.6-3.1z"/><path d="M7 5.4h.01M9 5.4h.01M7.2 7.2L8 7.8l.8-.6"/>',
   arrowLink: '<path d="M4.5 11.5l7-7M6 4.5h5.5V10"/>',
   more: '<circle cx="3.6" cy="8" r=".95" fill="currentColor"/><circle cx="8" cy="8" r=".95" fill="currentColor"/><circle cx="12.4" cy="8" r=".95" fill="currentColor"/>',
   server:

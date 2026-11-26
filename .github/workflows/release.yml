@@ -1,0 +1,60 @@
+# Сборка для Windows и публикация в Releases.
+# Запускается тегом вида v0.2.0 (версия в теге должна совпадать с package.json):
+#   npm version minor        # или patch — поднимет версию, сделает коммит и тег
+#   git push --follow-tags
+
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  windows:
+    name: Windows x64
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Версия в теге совпадает с package.json
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Тег $GITHUB_REF_NAME, а в package.json версия $version"
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Зависимости
+        run: npm ci
+
+      - name: Проверка типов
+        run: npm run typecheck
+
+      - name: Тесты
+        run: npm test
+
+      - name: Сборка
+        run: npm run dist:exe
+
+      - name: Публикация
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/publish-release.sh "$GITHUB_REF_NAME" "$VERSION"

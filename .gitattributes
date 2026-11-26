@@ -1,0 +1,2 @@
+# Скрипты для bash — всегда с LF: bash в Windows не понимает перевод строки CRLF.
+*.sh text eol=lf

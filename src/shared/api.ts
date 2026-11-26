@@ -2,6 +2,9 @@
 
 import type {
   AppInfo,
+  LocalOpenRequest,
+  LocalShell,
+  Macro,
   PromptRequest,
   PromptResponse,
   ReadTextResult,
@@ -23,6 +26,12 @@ import type {
 
 export type Unsubscribe = () => void
 
+/** Что откроется при закрытии программы: активные SSH-подключения и терминалы компьютера. */
+export interface CloseInfo {
+  connections: number
+  locals: number
+}
+
 export interface ConnectRequest {
   /** Идентификатор задаёт окно, чтобы связать вкладку с подключением до первых событий. */
   connId: string
@@ -42,11 +51,15 @@ export interface TermionApi {
      * Перед закрытием окна главный процесс спрашивает интерфейс. Обработчик может показать
      * своё окно (несохранённые файлы, активные подключения) и вернуть false, чтобы отменить закрытие.
      */
-    onBeforeClose(cb: (info: { connections: number }) => Promise<boolean>): Unsubscribe
+    onBeforeClose(cb: (info: CloseInfo) => Promise<boolean>): Unsubscribe
   }
   sessions: {
     load(): Promise<TreeNode[]>
     save(tree: TreeNode[]): Promise<void>
+  }
+  macros: {
+    load(): Promise<Macro[]>
+    save(macros: Macro[]): Promise<void>
   }
   secrets: {
     status(sessionId: string): Promise<SecretStatus>
@@ -63,6 +76,12 @@ export interface TermionApi {
   clipboard: {
     readText(): Promise<string>
     writeText(text: string): void
+  }
+  local: {
+    /** Установленные оболочки: PowerShell, CMD, Git Bash, WSL… (refresh — искать заново). */
+    shells(refresh?: boolean): Promise<LocalShell[]>
+    /** Открыть терминал компьютера. Дальше он работает как подключение: ssh.write, resize, ack, disconnect. */
+    open(req: LocalOpenRequest): Promise<void>
   }
   ssh: {
     connect(req: ConnectRequest): Promise<void>

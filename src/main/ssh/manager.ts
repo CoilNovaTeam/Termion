@@ -6,6 +6,8 @@ import { IPC } from '@shared/ipc'
 import type { PromptPayload, PromptResponse, ServerStats, SessionNode, StatsMode } from '@shared/types'
 import { newId } from '@shared/tree'
 import { LIMITS, isValidId } from '@shared/validate'
+import { LocalTerminal } from '../local/localTerminal'
+import type { ShellSpec } from '../local/shells'
 import { RemoteFs, RemoteFsError } from './remoteFs'
 import { ServerProbe } from './serverStats'
 import { SshSession, type SshDeps } from './session'
@@ -22,8 +24,20 @@ export interface ManagerDeps extends Omit<SshDeps, 'prompt' | 'events'> {
   findSession(id: string): SessionNode | null
 }
 
+/** То, что умеет и SSH-сессия, и терминал компьютера. */
+interface Terminal {
+  readonly isActive: boolean
+  start(): void
+  write(data: string | Buffer): void
+  resize(cols: number, rows: number): void
+  ack(bytes: number): void
+  dispose(): void
+}
+
 interface Connection {
-  ssh: SshSession
+  term: Terminal
+  /** null — терминал компьютера (файлов сервера и сведений о сервере у него нет). */
+  ssh: SshSession | null
   owner: Owner
   fs: RemoteFs | null
   transfers: TransferManager | null
@@ -60,8 +74,8 @@ export class ConnectionManager {
       if (!owner.isDestroyed()) owner.send(channel, payload)
     }
     const { findSession: _ignored, ...sshDeps } = this.deps
-    const conn: Connection = { ssh: null as unknown as SshSession, owner, fs: null, transfers: null, probe: null }
-    conn.ssh = new SshSession(
+    const conn: Connection = { term: null as unknown as Terminal, ssh: null, owner, fs: null, transfers: null, probe: null }
+    const ssh = new SshSession(
       connId,
       session,
       {
@@ -80,32 +94,56 @@ export class ConnectionManager {
       },
       { cols: clampSize(cols, 2, 2000, 80), rows: clampSize(rows, 1, 1000, 24) }
     )
+    conn.ssh = ssh
+    conn.term = ssh
     this.conns.set(connId, conn)
-    conn.ssh.start()
+    ssh.start()
+  }
+
+  /** Терминал компьютера: события те же, что у SSH, поэтому окну всё равно, что внутри. */
+  openLocal(owner: Owner, connId: unknown, shell: ShellSpec, cols: unknown, rows: unknown): void {
+    if (!isValidId(connId) || this.conns.has(connId)) throw new Error('Некорректный идентификатор подключения.')
+    const send = (channel: string, payload: unknown) => {
+      if (!owner.isDestroyed()) owner.send(channel, payload)
+    }
+    const term = new LocalTerminal(
+      shell,
+      {
+        data: (chunk) => send(IPC.evSshData, { connId, data: chunk }),
+        state: (state) => {
+          send(IPC.evSshState, { connId, state })
+          if (state === 'closed' || state === 'failed') this.release(connId)
+        },
+        notice: (level, text) => send(IPC.evSshNotice, { connId, level, text })
+      },
+      { cols: clampSize(cols, 2, 2000, 80), rows: clampSize(rows, 1, 1000, 24) }
+    )
+    this.conns.set(connId, { term, ssh: null, owner, fs: null, transfers: null, probe: null })
+    term.start()
   }
 
   write(ownerId: number, connId: unknown, data: unknown, binary: unknown): void {
     const conn = this.get(ownerId, connId)
     if (!conn || typeof data !== 'string' || !data.length || data.length > MAX_WRITE) return
-    conn.ssh.write(binary === true ? Buffer.from(data, 'latin1') : data)
+    conn.term.write(binary === true ? Buffer.from(data, 'latin1') : data)
   }
 
   resize(ownerId: number, connId: unknown, cols: unknown, rows: unknown): void {
     const conn = this.get(ownerId, connId)
     if (!conn) return
-    conn.ssh.resize(clampSize(cols, 2, 2000, 80), clampSize(rows, 1, 1000, 24))
+    conn.term.resize(clampSize(cols, 2, 2000, 80), clampSize(rows, 1, 1000, 24))
   }
 
   ack(ownerId: number, connId: unknown, bytes: unknown): void {
     const conn = this.get(ownerId, connId)
     if (!conn || typeof bytes !== 'number' || !Number.isFinite(bytes) || bytes < 0) return
-    conn.ssh.ack(bytes)
+    conn.term.ack(bytes)
   }
 
   disconnect(ownerId: number, connId: unknown): void {
     const conn = this.get(ownerId, connId)
     if (!conn) return
-    conn.ssh.dispose()
+    conn.term.dispose()
     this.release(connId as string)
   }
 
@@ -113,22 +151,28 @@ export class ConnectionManager {
   disposeOwner(ownerId: number): void {
     for (const [connId, conn] of this.conns) {
       if (conn.owner.id !== ownerId) continue
-      conn.ssh.dispose()
+      conn.term.dispose()
       this.release(connId)
     }
   }
 
   disposeAll(): void {
     for (const [connId, conn] of this.conns) {
-      conn.ssh.dispose()
+      conn.term.dispose()
       this.release(connId)
     }
   }
 
-  activeCount(): number {
-    let n = 0
-    for (const conn of this.conns.values()) if (conn.ssh.isActive) n++
-    return n
+  /** Сколько открыто SSH-подключений и терминалов компьютера (для вопроса при выходе). */
+  activeCount(): { connections: number; locals: number } {
+    let connections = 0
+    let locals = 0
+    for (const conn of this.conns.values()) {
+      if (!conn.term.isActive) continue
+      if (conn.ssh) connections++
+      else locals++
+    }
+    return { connections, locals }
   }
 
   /** Файлы сервера для подключения (только для своего окна и только после входа). */
@@ -147,7 +191,7 @@ export class ConnectionManager {
   /** Сведения о сервере (отдельный канал того же подключения, только чтение). */
   stats(ownerId: number, connId: unknown, mode: StatsMode): Promise<ServerStats> {
     const conn = this.get(ownerId, connId)
-    const client = conn?.ssh.readyClient
+    const client = conn?.ssh?.readyClient
     if (!conn || !client) return Promise.reject(new Error('Нет подключения к серверу.'))
     conn.probe ??= new ServerProbe(client)
     return conn.probe.sample(mode)
@@ -169,7 +213,7 @@ export class ConnectionManager {
   }
 
   private attachFiles(connId: string, conn: Connection, send: (channel: string, payload: unknown) => void): void {
-    const client = conn.ssh.readyClient
+    const client = conn.ssh?.readyClient
     if (!client || conn.fs) return
     conn.fs = new RemoteFs(client)
     conn.transfers = new TransferManager(connId, conn.fs, (job) => send(IPC.evTransfer, job))

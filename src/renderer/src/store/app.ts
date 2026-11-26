@@ -5,6 +5,9 @@ import type {
   ConnInfo,
   ConnState,
   EolId,
+  LocalShell,
+  Macro,
+  MacroScope,
   PromptRequest,
   RemoteEntry,
   RemoteFileMeta,
@@ -37,6 +40,8 @@ export interface TerminalTab {
   rows: number
   /** Текущая папка оболочки (по заголовку окна или OSC 7), если сервер её сообщает. */
   cwd: string | null
+  /** Терминал компьютера (PowerShell, CMD, Git Bash, WSL…); null — SSH-подключение. */
+  local: LocalShell | null
 }
 
 export interface EditorTab {
@@ -106,14 +111,18 @@ export type DialogState =
   | { type: 'unsaved'; dirtyIds: string[]; closeIds: string[] }
   /** Файл изменили или удалили на сервере после открытия. */
   | { type: 'conflict'; tabId: string; conflict: 'changed' | 'deleted' }
-  /** Закрытие программы с активными подключениями или несохранёнными файлами. */
-  | { type: 'close-app'; connections: number; dirtyIds: string[] }
+  /** Закрытие программы с активными подключениями, терминалами или несохранёнными файлами. */
+  | { type: 'close-app'; connections: number; locals: number; dirtyIds: string[] }
+  /** Новый или изменяемый макрос. scope — подсказка для нового (например, из меню сессии). */
+  | { type: 'macro'; editId: string | null; scope?: MacroScope }
   /** Перемещение файлов перетаскиванием внутри дерева. */
   | { type: 'move'; tabId: string; paths: string[]; dir: string }
 
 export interface MenuItem {
   label: string
   icon?: IconName
+  /** Класс цвета значка (например, ft-blue). */
+  iconClass?: string
   hint?: string
   danger?: boolean
   disabled?: boolean
@@ -155,6 +164,11 @@ export interface AppState {
   cpuHistory: Record<string, number[]>
   /** Открыта ли сводка о сервере активной вкладки. */
   serverPanel: boolean
+  /** Терминалы компьютера, найденные при запуске. */
+  shells: LocalShell[]
+  macros: Macro[]
+  /** Какой макрос сейчас печатается в какой вкладке (tabId → id макроса). */
+  macroRuns: Record<string, string>
   prompts: PromptRequest[]
   dialog: DialogState | null
   menu: MenuState | null
@@ -179,6 +193,9 @@ export const useApp = create<AppState>(() => ({
   statsErrors: {},
   cpuHistory: {},
   serverPanel: false,
+  shells: [],
+  macros: [],
+  macroRuns: {},
   prompts: [],
   dialog: null,
   menu: null,
@@ -192,9 +209,12 @@ export const setState = useApp.setState
 export const isTerminal = (tab: Tab | undefined | null): tab is TerminalTab => tab?.kind === 'terminal'
 export const isEditor = (tab: Tab | undefined | null): tab is EditorTab => tab?.kind === 'editor'
 
-/** Вкладка-терминал, чьи файлы показывать: активная или владелец активного редактора. */
+/** Вкладка-терминал, чьи файлы показывать: активная SSH-вкладка или владелец активного редактора. */
 export function filesTabId(state: Pick<AppState, 'tabs' | 'activeTabId'>): string | null {
   const active = state.tabs.find((t) => t.id === state.activeTabId)
   if (!active) return null
-  return active.kind === 'terminal' ? active.id : active.ownerId
+  if (active.kind === 'terminal') return active.local ? null : active.id
+  return active.ownerId
 }
+
+export const isLocal = (tab: Tab | undefined | null): tab is TerminalTab & { local: LocalShell } => tab?.kind === 'terminal' && !!tab.local

@@ -72,6 +72,7 @@ export function SettingsDialog() {
   const settings = useApp((s) => s.settings)
   const info = useApp((s) => s.info)
   const term = settings.terminal
+  const shells = useApp((s) => s.shells)
   const setTerm = (patch: Partial<Settings['terminal']>) => updateSettings((s) => ({ ...s, terminal: { ...s.terminal, ...patch } }))
 
   return (
@@ -119,6 +120,20 @@ export function SettingsDialog() {
 
         <section>
           <h4>Терминал</h4>
+          {shells.length > 0 && (
+            <div className="setting-line">
+              <span className="fld-label">Терминал компьютера по умолчанию</span>
+              <select value={shells.some((sh) => sh.id === term.defaultShell) ? term.defaultShell : ''} onChange={(e) => setTerm({ defaultShell: e.target.value })}>
+                <option value="">Автоматически ({shells[0].name})</option>
+                {shells.map((sh) => (
+                  <option key={sh.id} value={sh.id}>
+                    {sh.name}
+                    {sh.kind === 'wsl' ? ' (WSL)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="setting-line">
             <span className="fld-label">Шрифт</span>
             <select value={term.font} onChange={(e) => setTerm({ font: e.target.value as TerminalFont })}>
@@ -195,6 +210,21 @@ export function SettingsDialog() {
               <small>Как в PuTTY и MobaXterm. Если выключено — правый клик открывает меню</small>
             </span>
             <input type="checkbox" checked={term.rightClickPaste} onChange={(e) => setTerm({ rightClickPaste: e.target.checked })} />
+          </label>
+        </section>
+
+        <section>
+          <h4>Макросы</h4>
+          <label className="switch">
+            <span className="sw-text">
+              Полоса макросов под терминалом
+              <small>Кнопки макросов, которые видны в активной вкладке. Горячие клавиши работают и без неё</small>
+            </span>
+            <input
+              type="checkbox"
+              checked={settings.macros.showBar}
+              onChange={(e) => updateSettings((s) => ({ ...s, macros: { ...s.macros, showBar: e.target.checked } }))}
+            />
           </label>
         </section>
 

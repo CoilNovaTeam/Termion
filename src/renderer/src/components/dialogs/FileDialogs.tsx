@@ -120,7 +120,7 @@ export function ConflictDialog({ tabId, conflict }: { tabId: string; conflict: '
   )
 }
 
-export function CloseAppDialog({ connections, dirtyIds }: { connections: number; dirtyIds: string[] }) {
+export function CloseAppDialog({ connections, locals, dirtyIds }: { connections: number; locals: number; dirtyIds: string[] }) {
   const items = useEditors(dirtyIds)
   const [busy, setBusy] = useState(false)
   const run = async (choice: 'save' | 'discard' | 'cancel') => {
@@ -138,6 +138,13 @@ export function CloseAppDialog({ connections, dirtyIds }: { connections: number;
       {' — '}
       {connections === 1 ? 'оно будет закрыто' : 'они будут закрыты'}. Программы, запущенные в терминале без nohup, screen или tmux,
       остановятся.
+    </p>
+  )
+  const localText = locals > 0 && (
+    <p className="mtext">
+      {locals === 1 ? 'Открыт терминал компьютера' : `Открыто ${locals} ${plural(locals, 'терминал', 'терминала', 'терминалов')} компьютера`}
+      {' — '}
+      запущенные в {locals === 1 ? 'нём' : 'них'} программы будут закрыты.
     </p>
   )
   return (
@@ -179,6 +186,7 @@ export function CloseAppDialog({ connections, dirtyIds }: { connections: number;
         </>
       )}
       {conn}
+      {localText}
     </Modal>
   )
 }

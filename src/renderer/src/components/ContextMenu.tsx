@@ -88,7 +88,7 @@ export function ContextMenu() {
                 <span style={{ width: 16 }} />
               )
             ) : item.icon ? (
-              <Icon name={item.icon} />
+              <Icon name={item.icon} className={item.iconClass} />
             ) : (
               <span style={{ width: 16 }} />
             )}

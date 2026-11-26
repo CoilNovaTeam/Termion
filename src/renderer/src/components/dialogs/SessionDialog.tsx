@@ -39,6 +39,8 @@ export function SessionDialog({ editId, parentId }: { editId: string | null; par
     keyPath: existing?.keyPath ?? ''
   })
   const [folder, setFolder] = useState(parentId ?? '')
+  const macros = useApp((s) => s.macros)
+  const [onConnect, setOnConnect] = useState(existing?.onConnect ?? '')
   const [secret, setSecret] = useState<SecretStatus | null>(null)
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -93,7 +95,7 @@ export function SessionDialog({ editId, parentId }: { editId: string | null; par
       const id = await saveSession(
         editId,
         folder || null,
-        { name: normalizeName(form.name) ?? host, host, port, username, auth: form.auth, keyPath },
+        { name: normalizeName(form.name) ?? host, host, port, username, auth: form.auth, keyPath, onConnect: macros.some((m) => m.id === onConnect) ? onConnect : '' },
         passwordChange()
       )
       closeDialog()
@@ -276,6 +278,23 @@ export function SessionDialog({ editId, parentId }: { editId: string | null; par
             </span>
           </p>
         )}
+
+        <label className="fld">
+          <span className="fld-label">После входа выполнить</span>
+          <select value={macros.some((m) => m.id === onConnect) ? onConnect : ''} onChange={(e) => setOnConnect(e.target.value)}>
+            <option value="">— ничего —</option>
+            {macros.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
+          </select>
+          <span className="hint-text">
+            {macros.length
+              ? 'Макрос напечатается в терминал сразу после входа — например, перейти в папку проекта и показать его состояние.'
+              : 'Макросов пока нет — их создают кнопкой «+ Макрос» на полосе макросов под терминалом.'}
+          </span>
+        </label>
 
         {secret?.canStore === false ? (
           <p className="note warn">

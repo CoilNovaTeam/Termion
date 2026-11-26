@@ -15,6 +15,7 @@ import { checkOpenSshKnownHosts } from './ssh/opensshKnownHosts'
 import type { LoadResult } from './store/jsonFile'
 import { KnownHostsStore } from './store/knownHosts'
 import { SecretsStore, type Cipher } from './store/secrets'
+import { MacrosStore } from './store/macros'
 import { SessionsStore } from './store/sessions'
 import { SettingsStore } from './store/settings'
 import { WindowStateKeeper, applyWindowTheme, createMainWindow } from './window'
@@ -88,7 +89,7 @@ async function loadStore(what: string, load: () => Promise<LoadResult<unknown>>,
  * файлы, активные подключения). Если интерфейс не отозвался за 2 секунды (завис или
  * упал), окно закрывается без него.
  */
-function askRendererToClose(win: BrowserWindow, connections: number): Promise<boolean> {
+function askRendererToClose(win: BrowserWindow, open: { connections: number; locals: number }): Promise<boolean> {
   if (win.isDestroyed() || win.webContents.isCrashed()) return Promise.resolve(true)
   return new Promise<boolean>((resolve) => {
     let acked = false
@@ -106,7 +107,7 @@ function askRendererToClose(win: BrowserWindow, connections: number): Promise<bo
       clearTimeout(timer)
     }
     closeDecision = finish
-    win.webContents.send(IPC.evBeforeClose, { connections })
+    win.webContents.send(IPC.evBeforeClose, open)
   })
 }
 
@@ -123,12 +124,14 @@ async function bootstrap(): Promise<void> {
 
   const notices: string[] = []
   const sessions = new SessionsStore(dataDir)
+  const macros = new MacrosStore(dataDir)
   const settings = new SettingsStore(dataDir)
   const knownHosts = new KnownHostsStore(dataDir)
   const secrets = new SecretsStore(dataDir, cipher, (m) => log.warn(m))
   const windowState = new WindowStateKeeper(dataDir)
   await Promise.all([
     loadStore('сессий', () => sessions.load(), notices),
+    loadStore('макросов', () => macros.load(), notices),
     loadStore('настроек', () => settings.load(), notices),
     loadStore('ключей серверов', () => knownHosts.load(), notices),
     loadStore('паролей', () => secrets.load(), notices),
@@ -151,11 +154,12 @@ async function bootstrap(): Promise<void> {
   protocol.handle(DRAG_SCHEME, (request) => dragOut.handle(request))
 
   const flushAll = () =>
-    Promise.allSettled([sessions.flush(), settings.flush(), knownHosts.flush(), secrets.flush(), windowState.flush(mainWindow)])
+    Promise.allSettled([sessions.flush(), macros.flush(), settings.flush(), knownHosts.flush(), secrets.flush(), windowState.flush(mainWindow)])
 
   registerIpc({
     isTrusted: (sender) => !!mainWindow && !mainWindow.isDestroyed() && sender === mainWindow.webContents,
     sessions,
+    macros,
     secrets,
     settings,
     manager,

@@ -12,6 +12,7 @@ import {
   disconnectTab,
   duplicateTab,
   openDialog,
+  openLocal,
   openSession,
   reconnect,
   showMenu
@@ -22,6 +23,8 @@ import { download, revealInTree } from '../store/files'
 import { openServerPanel } from '../store/monitor'
 import * as terminals from '../terminal/registry'
 import { Icon, Logo } from './Icon'
+import { MacrosBar } from './MacrosBar'
+import { newTabMenu, shellIcon } from './shells'
 
 const dotClass = (state: TerminalTab['state']) =>
   state === 'connected' ? 'ok' : state === 'connecting' || state === 'authenticating' || state === 'idle' ? 'busy' : state === 'failed' ? 'err' : ''
@@ -51,6 +54,17 @@ function TabsBar() {
 
   const onMenu = (e: MouseEvent, tab: Tab) => {
     e.preventDefault()
+    if (isTerminal(tab) && tab.local) {
+      const live = tab.state === 'connected' || tab.state === 'connecting'
+      showMenu(e.clientX, e.clientY, [
+        { label: 'Перезапустить', icon: 'refresh', hint: 'Ctrl+Shift+R', onSelect: () => reconnect(tab.id) },
+        { label: 'Завершить', icon: 'unplug', disabled: !live, onSelect: () => disconnectTab(tab.id) },
+        { label: 'Дублировать вкладку', icon: 'duplicate', hint: 'Ctrl+Shift+D', onSelect: () => duplicateTab(tab.id) },
+        'separator',
+        ...closeItems(tab)
+      ])
+      return
+    }
     if (isTerminal(tab)) {
       const live = tab.state === 'connected' || tab.state === 'connecting' || tab.state === 'authenticating'
       showMenu(e.clientX, e.clientY, [
@@ -113,10 +127,12 @@ function TabsBar() {
           onContextMenu: (e: MouseEvent) => onMenu(e, tab)
         }
         if (isTerminal(tab)) {
+          const look = tab.local ? shellIcon(tab.local.kind) : null
+          const tip = tab.local ? `${tab.local.name} — терминал компьютера\n${tab.local.path}` : `${tab.username}@${tab.host}:${tab.port}`
           return (
-            <div key={tab.id} {...common} className={`tab is-term${active ? ' active' : ''}`} title={`${tab.username}@${tab.host}:${tab.port}`}>
-              <span className="tab-ic">
-                <Icon name="term" />
+            <div key={tab.id} {...common} className={`tab is-term${tab.local ? ' is-local' : ''}${active ? ' active' : ''}`} title={tip}>
+              <span className={`tab-ic${look ? ` ${look.tone}` : ''}`}>
+                <Icon name={look?.icon ?? 'term'} />
                 <i className={dotClass(tab.state)} />
               </span>
               <span className="tab-name">{tab.title}</span>
@@ -138,8 +154,11 @@ function TabsBar() {
       })}
       <button
         className="tab-add"
-        title="Новая сессия (Ctrl+Shift+N)"
-        onClick={() => openDialog({ type: 'session', editId: null, parentId: currentFolderId() })}
+        title="Новая вкладка: терминал компьютера или SSH-подключение"
+        onClick={(e) => {
+          const r = e.currentTarget.getBoundingClientRect()
+          showMenu(r.left, r.bottom + 4, newTabMenu())
+        }}
       >
         <Icon name="plus" />
       </button>
@@ -234,6 +253,7 @@ function EditorView({ tab, active }: { tab: EditorTab; active: boolean }) {
 function EmptyState() {
   const hasSessions = useApp((s) => s.tree.length > 0)
   const selected = useApp((s) => (s.selectedId ? findSession(s.tree, s.selectedId) : null))
+  const hasShells = useApp((s) => s.shells.length > 0)
   return (
     <div className="empty">
       <Logo size={46} />
@@ -244,6 +264,12 @@ function EmptyState() {
           <Icon name="plus" />
           Новая сессия
         </button>
+        {hasShells && (
+          <button className="btn" onClick={() => openLocal()}>
+            <Icon name="term" />
+            Терминал компьютера
+          </button>
+        )}
         {selected && (
           <button className="btn" onClick={() => openSession(selected.id)}>
             <Icon name="plug" />
@@ -257,6 +283,9 @@ function EmptyState() {
         </span>
         <span>
           <kbd>Ctrl Shift N</kbd> новая сессия
+        </span>
+        <span>
+          <kbd>Ctrl Shift T</kbd> терминал компьютера
         </span>
         <span>
           <kbd>Ctrl Tab</kbd> следующая вкладка
@@ -288,6 +317,7 @@ export function Workspace() {
         )}
         {!tabs.length && <EmptyState />}
       </div>
+      <MacrosBar />
     </main>
   )
 }

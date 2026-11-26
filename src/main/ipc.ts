@@ -16,18 +16,21 @@ import { dirname, isAbsolute, join, posix } from 'node:path'
 import { IPC } from '@shared/ipc'
 import type { AppInfo, EolId, RemoteFileMeta, Settings, TextEncodingId } from '@shared/types'
 import { sessionIds } from '@shared/tree'
-import { LIMITS, checkFileName, checkTree, isValidId, normalizeRemotePath } from '@shared/validate'
+import { LIMITS, checkFileName, checkMacros, checkTree, isValidId, normalizeRemotePath } from '@shared/validate'
 import { log } from './log'
 import type { ConnectionManager } from './ssh/manager'
 import { safeLocalName } from './ssh/transfers'
 import type { SecretsStore } from './store/secrets'
+import type { MacrosStore } from './store/macros'
 import type { SessionsStore } from './store/sessions'
 import type { SettingsStore } from './store/settings'
+import { listShells } from './local/shells'
 import type { DragOutService } from './ssh/dragOut'
 
 export interface IpcContext {
   isTrusted(sender: Electron.WebContents): boolean
   sessions: SessionsStore
+  macros: MacrosStore
   secrets: SecretsStore
   settings: SettingsStore
   manager: ConnectionManager
@@ -141,6 +144,13 @@ export function registerIpc(ctx: IpcContext): void {
     await ctx.secrets.pruneSessions(new Set(sessionIds(tree)))
   })
 
+  // ---------- макросы ----------
+  handle(IPC.macrosLoad, () => ctx.macros.list)
+  handle(IPC.macrosSave, async (_e, raw) => {
+    const { macros } = checkMacros(raw, true)
+    await ctx.macros.save(macros)
+  })
+
   // ---------- пароли ----------
   handle(IPC.secretsStatus, (_e, id) => {
     if (!isValidId(id)) throw new Error('Некорректный идентификатор сессии.')
@@ -186,6 +196,16 @@ export function registerIpc(ctx: IpcContext): void {
   handle(IPC.sshConnect, (e, req) => {
     const r = asRecord(req)
     ctx.manager.connect(e.sender, r.connId, r.sessionId, r.cols, r.rows)
+  })
+  // Терминалы компьютера: дальше работают через те же каналы, что и SSH (write, resize, ack, disconnect).
+  handle(IPC.localShells, async (_e, refresh) =>
+    (await listShells(refresh === true)).map(({ id, name, kind, path }) => ({ id, name, kind, path }))
+  )
+  handle(IPC.localOpen, async (e, req) => {
+    const r = asRecord(req)
+    const shell = (await listShells()).find((s) => s.id === r.shellId)
+    if (!shell) throw new Error('Эта оболочка не найдена на компьютере.')
+    ctx.manager.openLocal(e.sender, r.connId, shell, r.cols, r.rows)
   })
   on(IPC.sshWrite, (e, connId, data, binary) => ctx.manager.write(e.sender.id, connId, data, binary))
   on(IPC.sshResize, (e, connId, cols, rows) => ctx.manager.resize(e.sender.id, connId, cols, rows))

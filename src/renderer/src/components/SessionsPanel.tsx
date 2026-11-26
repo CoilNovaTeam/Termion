@@ -155,6 +155,7 @@ export function SessionsPanel() {
         { label: 'Изменить…', icon: 'edit', hint: 'F2', onSelect: () => editNode(node.id) },
         { label: 'Дублировать', icon: 'duplicate', onSelect: () => void duplicateSession(node.id) },
         { label: 'Копировать адрес', icon: 'copy', onSelect: () => copyText(`${node.username}@${node.host}`, 'Адрес скопирован') },
+        { label: 'Новый макрос для сессии…', icon: 'bolt', onSelect: () => openDialog({ type: 'macro', editId: null, scope: { type: 'session', id: node.id } }) },
         'separator',
         { label: 'Удалить', icon: 'trash', hint: 'Del', danger: true, onSelect: () => askDelete(node.id) }
       ])
@@ -163,6 +164,7 @@ export function SessionsPanel() {
         { label: 'Новая сессия здесь', icon: 'plus', onSelect: () => openDialog({ type: 'session', editId: null, parentId: node.id }) },
         { label: 'Новая папка внутри', icon: 'folderPlus', onSelect: () => openDialog({ type: 'folder', editId: null, parentId: node.id }) },
         { label: 'Переименовать…', icon: 'edit', hint: 'F2', onSelect: () => editNode(node.id) },
+        { label: 'Новый макрос для папки…', icon: 'bolt', onSelect: () => openDialog({ type: 'macro', editId: null, scope: { type: 'folder', id: node.id } }) },
         'separator',
         { label: 'Удалить папку', icon: 'trash', hint: 'Del', danger: true, onSelect: () => askDelete(node.id) }
       ])

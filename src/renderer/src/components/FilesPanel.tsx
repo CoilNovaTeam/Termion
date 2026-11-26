@@ -21,7 +21,7 @@ import { api } from '../api'
 import { fileTone } from '../editor/languages'
 import { formatDate, formatSize, modeString, plural } from '../format'
 import { copyText, reconnect, showMenu } from '../store/actions'
-import { filesTabId, isEditor, useApp, type FilesView, type MenuEntry, type TerminalTab } from '../store/app'
+import { filesTabId, isEditor, isLocal, useApp, type FilesView, type MenuEntry, type TerminalTab } from '../store/app'
 import { openFile } from '../store/editors'
 import * as files from '../store/files'
 import { Icon } from './Icon'
@@ -788,7 +788,7 @@ function Transfers({ connId }: { connId: string }) {
 
 // ---------- панель ----------
 
-function Placeholder({ icon, text, children }: { icon: 'folder' | 'plug' | 'warn' | 'refresh'; text: string; children?: ReactNode }) {
+function Placeholder({ icon, text, children }: { icon: 'folder' | 'plug' | 'warn' | 'refresh' | 'term'; text: string; children?: ReactNode }) {
   return (
     <div className="empty-panel">
       <Icon name={icon} className={icon === 'refresh' ? 'spin' : undefined} />
@@ -804,6 +804,7 @@ export function FilesPanel() {
   const v = useApp((s) => (tabId ? s.files[tabId] : undefined))
   const follow = useApp((s) => s.settings.files.followTerminal)
   const live = tab?.state === 'connected'
+  const localActive = useApp((s) => isLocal(s.tabs.find((t) => t.id === s.activeTabId)))
 
   // При переключении вкладок дерево тихо обновляется.
   useEffect(() => {
@@ -815,7 +816,8 @@ export function FilesPanel() {
   const rootLoaded = !!(v?.root && v.listings[v.root])
 
   let body: ReactNode
-  if (!tab) body = <Placeholder icon="folder" text="Подключитесь к сессии — здесь появятся файлы сервера" />
+  if (!tab && localActive) body = <Placeholder icon="term" text="Это терминал компьютера. Файлы сервера показываются для SSH-вкладок." />
+  else if (!tab) body = <Placeholder icon="folder" text="Подключитесь к сессии — здесь появятся файлы сервера" />
   else if (tab.state === 'closed' || tab.state === 'failed')
     body = (
       <Placeholder icon="plug" text="Соединение закрыто">
@@ -859,7 +861,9 @@ export function FilesPanel() {
     ) : (
       <Placeholder icon="refresh" text="Загрузка…" />
     )
-  else body = <Tree key={tab.id} tabId={tab.id} v={v} live={live} />
+  // Ключи у соседних элементов должны различаться: с одинаковым ключом React путает их при
+  // смене вкладки и оставляет на экране старую строку пути.
+  else body = <Tree key={`tree:${tab.id}`} tabId={tab.id} v={v} live={live} />
 
   return (
     <section className="panel files">
@@ -896,7 +900,7 @@ export function FilesPanel() {
           </div>
         )}
       </div>
-      {ready && tab && v && <PathBar key={tab.id} tabId={tab.id} v={v} follow={follow} />}
+      {ready && tab && v && <PathBar key={`path:${tab.id}`} tabId={tab.id} v={v} follow={follow} />}
       {body}
       {ready && tab && v && rootLoaded && <SelectionBar tabId={tab.id} v={v} />}
       {tab?.connId && <Transfers connId={tab.connId} />}

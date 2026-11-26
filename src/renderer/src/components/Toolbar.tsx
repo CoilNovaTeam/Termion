@@ -2,9 +2,10 @@
 
 import { findSession } from '@shared/tree'
 import { currentFolderId } from '../hooks/useShortcuts'
-import { openDialog, openSession, setSide, toast } from '../store/actions'
+import { openDialog, openSession, setSide, showMenu, toast } from '../store/actions'
 import { getState, isTerminal, useApp } from '../store/app'
 import { Icon } from './Icon'
+import { newTabMenu } from './shells'
 
 export function connectSelected(): void {
   const { tree, selectedId } = getState()
@@ -25,6 +26,21 @@ export function Toolbar() {
         <Icon name="plug" />
         <span>Подключить</span>
       </button>
+      <button
+        className="tb"
+        title="Терминал компьютера или SSH-подключение"
+        onClick={(e) => {
+          const r = e.currentTarget.getBoundingClientRect()
+          showMenu(r.left, r.bottom + 4, newTabMenu())
+        }}
+      >
+        <Icon name="term" />
+        <span>Терминал</span>
+      </button>
+      <button className="tb" title="Новый макрос" onClick={() => openDialog({ type: 'macro', editId: null })}>
+        <Icon name="bolt" />
+        <span>Макрос</span>
+      </button>
       <div className="tb-sep" />
       <button className={`tb${side === 'files' ? ' on' : ''}`} onClick={() => setSide(side === 'files' ? 'sessions' : 'files')}>
         <Icon name="folder" />
@@ -41,7 +57,7 @@ export function Toolbar() {
 
 export function Rail() {
   const side = useApp((s) => s.side)
-  const live = useApp((s) => s.tabs.some((t) => isTerminal(t) && t.state === 'connected'))
+  const live = useApp((s) => s.tabs.some((t) => isTerminal(t) && !t.local && t.state === 'connected'))
   return (
     <nav className="rail">
       <button className={`rail-btn${side === 'sessions' ? ' on' : ''}`} title="Сессии" onClick={() => setSide('sessions')}>

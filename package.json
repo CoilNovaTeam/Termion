@@ -15,9 +15,11 @@
     "e2e": "electron-vite build && node --no-warnings scripts/e2e.mjs",
     "dist": "electron-vite build && electron-builder --win --dir",
     "icons": "electron scripts/make-icons.cjs",
-    "postinstall": "node scripts/ensure-electron.cjs"
+    "postinstall": "node scripts/ensure-electron.cjs",
+    "dist:exe": "electron-vite build && electron-builder --win --publish never"
   },
   "dependencies": {
+    "node-pty": "1.1.0",
     "ssh2": "^1.17.0"
   },
   "devDependencies": {

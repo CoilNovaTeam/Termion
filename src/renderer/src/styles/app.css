@@ -1729,6 +1729,18 @@ html[data-theme='classic'] .tab.active.is-term {
 .fld select {
   padding-right: 6px;
 }
+.fld textarea {
+  height: auto;
+  min-height: 132px;
+  max-height: 46vh;
+  padding: 8px 10px;
+  line-height: 1.55;
+  font-size: 12.5px;
+  resize: vertical;
+  white-space: pre;
+  overflow: auto;
+  tab-size: 4;
+}
 .fld input:focus,
 .fld select:focus,
 .fld textarea:focus,
@@ -1736,7 +1748,8 @@ html[data-theme='classic'] .tab.active.is-term {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
-.fld.invalid input {
+.fld.invalid input,
+.fld.invalid textarea {
   border-color: var(--err);
   box-shadow: 0 0 0 3px var(--err-soft);
 }
@@ -2047,6 +2060,10 @@ html[data-theme='classic'] .tab.active.is-term {
   align-items: center;
   gap: 8px;
   pointer-events: none;
+}
+/* Уведомления — над полосой макросов, а не поверх её кнопок. */
+.app:has(.macros) .toasts {
+  bottom: 88px;
 }
 .toast {
   display: flex;
@@ -2453,4 +2470,133 @@ html[data-theme='classic'] .tab.active.is-term {
   border-top: 1px solid var(--border);
   font-size: 11px;
   color: var(--text-faint);
+}
+
+/* ============ Макросы ============ */
+.macros {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 44px;
+  padding: 0 6px 0 10px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-panel);
+  flex: none;
+  min-width: 0;
+}
+.mac-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-right: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  white-space: nowrap;
+  flex: none;
+}
+.mac-label .ic {
+  width: 14px;
+  height: 14px;
+  color: var(--accent);
+}
+.mac-list {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+.mac-list::-webkit-scrollbar {
+  height: 0;
+}
+.chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 28px;
+  padding: 0 11px 0 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-panel-2);
+  color: var(--text);
+  white-space: nowrap;
+  font-size: 12.5px;
+  flex: none;
+}
+.chip:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.chip > .ic {
+  width: 11px;
+  height: 11px;
+  color: var(--accent);
+}
+.chip .scope {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 1px;
+  padding-left: 7px;
+  border-left: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text-faint);
+}
+.chip .scope .ic {
+  width: 11px;
+  height: 11px;
+}
+.chip .scope.missing {
+  color: var(--warn);
+}
+.chip.running {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.chip[data-off] {
+  opacity: 0.5;
+}
+.chip.drop-before::before {
+  content: '';
+  position: absolute;
+  left: -5px;
+  top: 3px;
+  bottom: 3px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+}
+.chip-add {
+  border-style: dashed;
+  background: none;
+  color: var(--text-dim);
+}
+.chip-add > .ic {
+  color: var(--text-dim);
+}
+.mac-all {
+  flex: none;
+}
+.w150 {
+  width: 150px;
+  flex: none;
+}
+.check-hint {
+  color: var(--text-faint);
+  font-size: 12px;
+}
+input.hotkey {
+  cursor: pointer;
+  caret-color: transparent;
+}
+input.hotkey:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }

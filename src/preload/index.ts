@@ -2,7 +2,7 @@
 // только к этому узкому набору функций (window.termion).
 
 import { contextBridge, ipcRenderer, webUtils, type IpcRendererEvent } from 'electron'
-import type { TermionApi } from '@shared/api'
+import type { CloseInfo, TermionApi } from '@shared/api'
 import { IPC } from '@shared/ipc'
 
 function subscribe<T>(channel: string, cb: (payload: T) => void): () => void {
@@ -22,7 +22,7 @@ const api: TermionApi = {
     openExternal: (url) => ipcRenderer.invoke(IPC.openExternal, url),
     showInFolder: (path) => ipcRenderer.invoke(IPC.showInFolder, path),
     onBeforeClose: (cb) =>
-      subscribe<{ connections: number }>(IPC.evBeforeClose, (info) => {
+      subscribe<CloseInfo>(IPC.evBeforeClose, (info) => {
         ipcRenderer.send(IPC.appCloseAck)
         cb(info).then(
           (proceed) => ipcRenderer.send(IPC.appCloseReady, proceed),
@@ -33,6 +33,10 @@ const api: TermionApi = {
   sessions: {
     load: () => ipcRenderer.invoke(IPC.sessionsLoad),
     save: (tree) => ipcRenderer.invoke(IPC.sessionsSave, tree)
+  },
+  macros: {
+    load: () => ipcRenderer.invoke(IPC.macrosLoad),
+    save: (macros) => ipcRenderer.invoke(IPC.macrosSave, macros)
   },
   secrets: {
     status: (sessionId) => ipcRenderer.invoke(IPC.secretsStatus, sessionId),
@@ -48,6 +52,10 @@ const api: TermionApi = {
   clipboard: {
     readText: () => ipcRenderer.invoke(IPC.clipboardRead),
     writeText: (text) => ipcRenderer.send(IPC.clipboardWrite, text)
+  },
+  local: {
+    shells: (refresh) => ipcRenderer.invoke(IPC.localShells, refresh === true),
+    open: (req) => ipcRenderer.invoke(IPC.localOpen, req)
   },
   ssh: {
     connect: (req) => ipcRenderer.invoke(IPC.sshConnect, req),

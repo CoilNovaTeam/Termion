@@ -1,8 +1,8 @@
 import type { MouseEvent } from 'react'
-import type { EolId, TextEncodingId } from '@shared/types'
+import type { EolId, LocalShell, TextEncodingId } from '@shared/types'
 import * as editors from '../editor/registry'
 import { showMenu } from '../store/actions'
-import { isEditor, isTerminal, useApp, type EditorTab, type TerminalTab } from '../store/app'
+import { isEditor, isLocal, isTerminal, useApp, type EditorTab, type TerminalTab } from '../store/app'
 import { setFormat } from '../store/editors'
 import { filesRootLabel } from './FilesPanel'
 import { Icon } from './Icon'
@@ -93,8 +93,42 @@ function EditorStatus({ tab }: { tab: EditorTab }) {
   )
 }
 
+const LOCAL_STATE_TEXT: Record<TerminalTab['state'], string> = {
+  idle: 'Подготовка…',
+  connecting: 'Запуск…',
+  authenticating: 'Запуск…',
+  connected: 'Работает',
+  closed: 'Завершён',
+  failed: 'Не запустился'
+}
+
+function LocalStatus({ tab }: { tab: TerminalTab & { local: LocalShell } }) {
+  return (
+    <footer className="status">
+      <span className="st">
+        <i className={`st-dot ${dot(tab.state)}`} />
+        {LOCAL_STATE_TEXT[tab.state]}
+      </span>
+      <span className="st">
+        <Icon name="term" />
+        Терминал компьютера · {tab.local.name}
+      </span>
+      <span className="st st-path mono" title={tab.local.path}>
+        {tab.local.path}
+      </span>
+      <div className="st-right">
+        {tab.cols > 0 && (
+          <span className="st mono">
+            {tab.cols}×{tab.rows}
+          </span>
+        )}
+      </div>
+    </footer>
+  )
+}
+
 function TerminalStatus({ tab }: { tab: TerminalTab }) {
-  const sessions = useApp((s) => s.tabs.filter((t) => isTerminal(t) && t.state === 'connected').length)
+  const sessions = useApp((s) => s.tabs.filter((t) => isTerminal(t) && !t.local && t.state === 'connected').length)
   const filesRoot = useApp((s) => filesRootLabel(s.files[tab.id]))
   const meters = useApp((s) => s.settings.monitor.statusBar)
   const target = `${tab.username}@${tab.host.includes(':') ? `[${tab.host}]` : tab.host}:${tab.port}`
@@ -139,6 +173,7 @@ function TerminalStatus({ tab }: { tab: TerminalTab }) {
 export function StatusBar() {
   const tab = useApp((s) => s.tabs.find((t) => t.id === s.activeTabId))
   if (isEditor(tab)) return <EditorStatus tab={tab} />
+  if (isLocal(tab)) return <LocalStatus tab={tab} />
   if (isTerminal(tab)) return <TerminalStatus tab={tab} />
   return (
     <footer className="status">

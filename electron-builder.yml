@@ -8,11 +8,47 @@ files:
   - out/**
   - package.json
   - '!**/*.map'
+  # node-pty: в программу — только готовая сборка для Windows x64, без исходников и отладочных файлов.
+  - '!**/node_modules/node-pty/{deps,src,scripts,typings,third_party}/**'
+  - '!**/node_modules/node-pty/prebuilds/{darwin-*,linux-*,win32-arm64}/**'
+  - '!**/node_modules/node-pty/**/*.pdb'
+  # build/Release — копия conpty для сборки из исходников; готовая сборка берёт свою из prebuilds.
+  - '!**/node_modules/node-pty/build/**'
+  - '!**/node_modules/node-addon-api/**'
+# Переводы Chromium: интерфейс у программы свой, нужны только русский и английский (−48 МБ).
+electronLanguages:
+  - ru
+  - en-US
 asar: true
-# Нативных модулей нет (ssh2 работает на чистом JavaScript) — пересборка не нужна.
+# Псевдотерминал (DLL, OpenConsole.exe и рабочий поток) должен лежать на диске, а не в app.asar.
+asarUnpack:
+  - '**/node_modules/node-pty/**'
+# node-pty ставится готовой сборкой на N-API (подходит любой версии Electron), ssh2 — чистый JavaScript:
+# пересобирать нативные модули не нужно.
 npmRebuild: false
 win:
+  # Установщик — основной вариант: программа стоит на диске и запускается сразу.
+  # Переносимый exe при каждом запуске распаковывает себя во временную папку (~8 с).
+  # `npm run dist` собирает только папку dist/win-unpacked (быстрее, для проверок).
   target:
-    - target: dir
+    - target: nsis
+      arch: x64
+    - target: portable
+      arch: x64
   icon: build/icon.ico
   executableName: Termion
+nsis:
+  # В один щелчок, для текущего пользователя (%LOCALAPPDATA%\Programs\Termion), без прав администратора.
+  # Новая версия ставится поверх старой; сессии и настройки в %APPDATA%\Termion не трогаются.
+  oneClick: true
+  perMachine: false
+  artifactName: Termion-Setup-${version}.${ext}
+  shortcutName: Termion
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  runAfterFinish: true
+  deleteAppDataOnUninstall: false
+portable:
+  artifactName: Termion-${version}-portable.${ext}
+# Выкладывает сборку GitHub Actions (.github/workflows/release.yml), сам electron-builder ничего не публикует.
+publish: null

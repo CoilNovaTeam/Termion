@@ -2,6 +2,7 @@ import { useApp } from '../../store/app'
 import { ConfirmDialog } from './ConfirmDialog'
 import { CloseAppDialog, ConflictDialog, MoveDialog, UnsavedDialog } from './FileDialogs'
 import { FolderDialog } from './FolderDialog'
+import { MacroDialog } from './MacroDialog'
 import { PromptDialog } from './PromptDialog'
 import { SessionDialog } from './SessionDialog'
 import { SettingsDialog } from './SettingsDialog'
@@ -17,7 +18,8 @@ export function DialogHost() {
       {dialog?.type === 'settings' && <SettingsDialog />}
       {dialog?.type === 'unsaved' && <UnsavedDialog dirtyIds={dialog.dirtyIds} />}
       {dialog?.type === 'conflict' && <ConflictDialog key={`c-${dialog.tabId}`} tabId={dialog.tabId} conflict={dialog.conflict} />}
-      {dialog?.type === 'close-app' && <CloseAppDialog connections={dialog.connections} dirtyIds={dialog.dirtyIds} />}
+      {dialog?.type === 'close-app' && <CloseAppDialog connections={dialog.connections} locals={dialog.locals} dirtyIds={dialog.dirtyIds} />}
+      {dialog?.type === 'macro' && <MacroDialog key={`m-${dialog.editId}`} editId={dialog.editId} scope={dialog.scope} />}
       {dialog?.type === 'move' && <MoveDialog key={dialog.paths.join('|')} paths={dialog.paths} dir={dialog.dir} />}
       {/* Вопросы от SSH — поверх любых окон: подключение ждёт ответа. */}
       {prompt && <PromptDialog key={prompt.promptId} prompt={prompt} />}

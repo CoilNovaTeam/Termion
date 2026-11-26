@@ -23,6 +23,8 @@ export interface TerminalHost {
   onResize(tabId: string, cols: number, rows: number): void
   /** Оболочка сообщила текущую папку (заголовком окна или OSC 7). */
   onCwd(tabId: string, hint: CwdHint): void
+  /** «Переподключиться» для SSH, «Перезапустить» для терминала компьютера. */
+  reconnectLabel(tabId: string): string
   showMenu(x: number, y: number, items: MenuEntry[]): void
 }
 
@@ -55,7 +57,11 @@ export function configure(h: TerminalHost): void {
 
 // Сброс режимов, которые удалённая программа могла оставить включёнными (альтернативный
 // экран vim/htop, мышь, вставка скобками, скрытый курсор), без очистки истории.
-const RESET_MODES = '\x1b[?1049l\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l\x1b[?2004l\x1b[!p\x1b[?25h\x1b[0m'
+// ESC 7 перед ?1049l: выход из альтернативного экрана восстанавливает сохранённую позицию
+// курсора обычного экрана. Если программа туда не переходила, сохранённой позиции нет —
+// курсор прыгнул бы в левый верхний угол и текст лёг бы поверх старого. Позиция хранится
+// у каждого экрана своя, поэтому ESC 7 сохраняет текущую только там, где он сейчас.
+const RESET_MODES = '\x1b7\x1b[?1049l\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l\x1b[?2004l\x1b[!p\x1b[?25h\x1b[0m'
 
 const NOTICE_STYLE: Record<NoticeLevel, [string, string]> = {
   info: ['\x1b[2m', ''],
@@ -246,7 +252,7 @@ export function notice(tabId: string, level: NoticeLevel, text: string): void {
   writeLine(entry, `${color}${mark}${text.replace(/\r?\n/g, '\r\n')}\x1b[0m`)
 }
 
-export function setDisconnected(tabId: string, disconnected: boolean): void {
+export function setDisconnected(tabId: string, disconnected: boolean, hint = 'Нажмите Enter, чтобы подключиться снова.'): void {
   const entry = entries.get(tabId)
   if (!entry) return
   if (!disconnected) {
@@ -256,7 +262,7 @@ export function setDisconnected(tabId: string, disconnected: boolean): void {
   if (entry.disconnected) return
   entry.disconnected = true
   entry.term.write(RESET_MODES)
-  writeLine(entry, '\x1b[2mНажмите Enter, чтобы подключиться снова.\x1b[0m')
+  writeLine(entry, `\x1b[2m${hint}\x1b[0m`)
 }
 
 export function beginReconnect(tabId: string): void {
@@ -340,7 +346,7 @@ function onContextMenu(entry: Entry, ev: MouseEvent): void {
     { label: 'Выделить всё', icon: 'selectAll', onSelect: () => term.selectAll() },
     { label: 'Очистить экран', icon: 'eraser', onSelect: () => term.clear() },
     'separator',
-    { label: 'Переподключиться', icon: 'refresh', hint: 'Ctrl+Shift+R', onSelect: () => host.reconnect(entry.tabId) },
+    { label: host.reconnectLabel(entry.tabId), icon: 'refresh', hint: 'Ctrl+Shift+R', onSelect: () => host.reconnect(entry.tabId) },
     { label: 'Закрыть вкладку', icon: 'x', hint: 'Ctrl+Shift+W', onSelect: () => host.closeTab(entry.tabId) }
   ])
 }

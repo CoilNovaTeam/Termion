@@ -7,12 +7,15 @@ import type {
   CursorStyle,
   FolderNode,
   LayoutId,
+  Macro,
+  MacroScope,
   SessionNode,
   Settings,
   TerminalFont,
   ThemeId,
   TreeNode
 } from './types'
+import { hotkeyProblem } from './hotkeys'
 
 export const LIMITS = {
   maxDepth: 16,
@@ -21,8 +24,12 @@ export const LIMITS = {
   hostLength: 253,
   userLength: 64,
   keyPathLength: 1024,
-  passwordLength: 4096
+  passwordLength: 4096,
+  maxMacros: 500,
+  macroLength: 64 * 1024
 } as const
+
+export const MACRO_DELAYS = [0, 300, 500, 1000, 2000, 5000] as const
 
 export const DEFAULT_SETTINGS: Settings = {
   theme: 'graphite',
@@ -36,7 +43,8 @@ export const DEFAULT_SETTINGS: Settings = {
     cursorBlink: true,
     scrollback: 10_000,
     copyOnSelect: true,
-    rightClickPaste: false
+    rightClickPaste: false,
+    defaultShell: ''
   },
   files: {
     showHidden: true,
@@ -48,6 +56,9 @@ export const DEFAULT_SETTINGS: Settings = {
   },
   monitor: {
     statusBar: true
+  },
+  macros: {
+    showBar: true
   }
 }
 
@@ -123,7 +134,63 @@ export function checkSession(raw: unknown): SessionNode | string {
   if (!auth) return 'неизвестный способ входа'
   const keyPath = normalizeKeyPath(raw.keyPath)
   if (keyPath === null) return 'некорректный путь к ключу'
-  return { type: 'session', id: raw.id, name, host, port, username, auth, keyPath }
+  const session: SessionNode = { type: 'session', id: raw.id, name, host, port, username, auth, keyPath }
+  if (isValidId(raw.onConnect)) session.onConnect = raw.onConnect
+  return session
+}
+
+/** Макрос из окна или с диска: текст или null, если запись повреждена. */
+export function checkMacro(raw: unknown): Macro | string {
+  if (!isObject(raw)) return 'не является макросом'
+  if (!isValidId(raw.id)) return 'некорректный идентификатор'
+  const name = normalizeName(raw.name)
+  if (!name) return 'некорректное название'
+  if (typeof raw.commands !== 'string' || !raw.commands.trim() || raw.commands.length > LIMITS.macroLength) return 'нет команд'
+  const s = isObject(raw.scope) ? raw.scope : {}
+  let scope: MacroScope
+  if (s.type === 'folder' || s.type === 'session') {
+    if (!isValidId(s.id)) return 'некорректная область'
+    scope = { type: s.type, id: s.id }
+  } else if (s.type === 'local') {
+    scope = { type: 'local' }
+  } else {
+    scope = { type: 'all' }
+  }
+  const hotkey = typeof raw.hotkey === 'string' && raw.hotkey && !hotkeyProblem(raw.hotkey) ? raw.hotkey : ''
+  const delay = (MACRO_DELAYS as readonly number[]).includes(raw.delay as number) ? (raw.delay as number) : 0
+  return { id: raw.id, name, commands: raw.commands.replace(/\r\n?/g, '\n'), enter: raw.enter !== false, delay, scope, hotkey }
+}
+
+/**
+ * Список макросов. strict — для данных из окна (любая ошибка — исключение),
+ * иначе повреждённые записи пропускаются (чтение файла с диска).
+ */
+export function checkMacros(raw: unknown, strict: boolean): { macros: Macro[]; dropped: string[] } {
+  if (!Array.isArray(raw)) {
+    if (strict) throw new ValidationError('Список макросов повреждён.')
+    return { macros: [], dropped: ['список макросов повреждён'] }
+  }
+  if (raw.length > LIMITS.maxMacros) {
+    if (strict) throw new ValidationError('Слишком много макросов.')
+  }
+  const macros: Macro[] = []
+  const dropped: string[] = []
+  const ids = new Set<string>()
+  const hotkeys = new Set<string>()
+  for (const item of raw.slice(0, LIMITS.maxMacros)) {
+    const m = checkMacro(item)
+    if (typeof m === 'string' || ids.has(m.id)) {
+      const why = typeof m === 'string' ? m : 'повторяющийся идентификатор'
+      if (strict) throw new ValidationError(`Макрос: ${why}.`)
+      dropped.push(why)
+      continue
+    }
+    if (m.hotkey && hotkeys.has(m.hotkey)) m.hotkey = '' // одна клавиша — один макрос
+    if (m.hotkey) hotkeys.add(m.hotkey)
+    ids.add(m.id)
+    macros.push(m)
+  }
+  return { macros, dropped }
 }
 
 export interface TreeCheckResult {
@@ -212,6 +279,7 @@ export function normalizeSettings(raw: unknown): Settings {
   const f = isObject(r.files) ? r.files : {}
   const e = isObject(r.editor) ? r.editor : {}
   const m = isObject(r.monitor) ? r.monitor : {}
+  const mc = isObject(r.macros) ? r.macros : {}
   const bool = (v: unknown, fallback: boolean) => (typeof v === 'boolean' ? v : fallback)
   return {
     theme: pick<ThemeId>(r.theme, ['graphite', 'classic', 'light'], d.theme),
@@ -225,7 +293,8 @@ export function normalizeSettings(raw: unknown): Settings {
       cursorBlink: typeof t.cursorBlink === 'boolean' ? t.cursorBlink : d.terminal.cursorBlink,
       scrollback: clampNumber(t.scrollback, 500, 200_000, d.terminal.scrollback, 1),
       copyOnSelect: typeof t.copyOnSelect === 'boolean' ? t.copyOnSelect : d.terminal.copyOnSelect,
-      rightClickPaste: typeof t.rightClickPaste === 'boolean' ? t.rightClickPaste : d.terminal.rightClickPaste
+      rightClickPaste: typeof t.rightClickPaste === 'boolean' ? t.rightClickPaste : d.terminal.rightClickPaste,
+      defaultShell: typeof t.defaultShell === 'string' && t.defaultShell.length <= 200 ? t.defaultShell : d.terminal.defaultShell
     },
     files: {
       showHidden: bool(f.showHidden, d.files.showHidden),
@@ -237,6 +306,9 @@ export function normalizeSettings(raw: unknown): Settings {
     },
     monitor: {
       statusBar: bool(m.statusBar, d.monitor.statusBar)
+    },
+    macros: {
+      showBar: bool(mc.showBar, d.macros.showBar)
     }
   }
 }

@@ -17,6 +17,8 @@ export interface SessionNode {
   auth: AuthMethod
   /** Путь к приватному ключу. Пустая строка — стандартные ключи из ~/.ssh. */
   keyPath: string
+  /** Макрос, который выполняется сразу после входа (id), или пусто. */
+  onConnect?: string
 }
 
 export interface FolderNode {
@@ -38,6 +40,28 @@ export interface TerminalSettings {
   scrollback: number
   copyOnSelect: boolean
   rightClickPaste: boolean
+  /** Терминал компьютера по умолчанию (id оболочки); пусто — первый найденный. */
+  defaultShell: string
+}
+
+// ---------- терминалы компьютера ----------
+
+export type ShellKind = 'pwsh' | 'powershell' | 'cmd' | 'gitbash' | 'msys2' | 'cygwin' | 'wsl' | 'sh'
+
+export interface LocalShell {
+  /** pwsh, powershell, cmd, gitbash, wsl:Ubuntu… */
+  id: string
+  name: string
+  kind: ShellKind
+  /** Путь к программе — для подсказки. */
+  path: string
+}
+
+export interface LocalOpenRequest {
+  connId: string
+  shellId: string
+  cols: number
+  rows: number
 }
 
 export interface FilesSettings {
@@ -53,6 +77,11 @@ export interface EditorSettings {
   wordWrap: boolean
 }
 
+export interface MacroSettings {
+  /** Полоса макросов под терминалом. */
+  showBar: boolean
+}
+
 export interface MonitorSettings {
   /** Нагрузка сервера (ЦП, память, диск) в строке состояния. */
   statusBar: boolean
@@ -66,6 +95,26 @@ export interface Settings {
   files: FilesSettings
   editor: EditorSettings
   monitor: MonitorSettings
+  macros: MacroSettings
+}
+
+// ---------- макросы ----------
+
+/** Где виден макрос (и где работает его горячая клавиша). */
+export type MacroScope = { type: 'all' } | { type: 'local' } | { type: 'folder'; id: string } | { type: 'session'; id: string }
+
+export interface Macro {
+  id: string
+  name: string
+  /** Команды — по одной на строку. Макрос печатает их в терминал, как будто их ввели вручную. */
+  commands: string
+  /** Нажать Enter после последней строки (между строками Enter нажимается всегда). */
+  enter: boolean
+  /** Пауза между строками, мс (0 — без пауз). */
+  delay: number
+  scope: MacroScope
+  /** Горячая клавиша («Ctrl+Alt+1») или пусто. */
+  hotkey: string
 }
 
 // ---------- файлы на сервере (SFTP) ----------
