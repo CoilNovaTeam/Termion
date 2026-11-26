@@ -84,7 +84,22 @@ function parseZip(zip: Buffer): Parsed[] {
   return out
 }
 
-const sample = (): ZipEntry[] => {
+/** Имена в тестовом архиве: русские — основной случай, латинские — для tar.exe на нерусской Windows. */
+const RU = { site: 'сайт', empty: 'пустой.txt' }
+const LATIN = { site: 'site', empty: 'empty.txt' }
+type Names = typeof RU
+
+/**
+ * tar.exe из Windows переводит имена из архива в кодовую страницу ANSI. На английской Windows
+ * (1252, как у сборочных машин GitHub) кириллицу он не прочитает — «unreadable filename».
+ * Это ограничение tar.exe, а не архива: Проводник и Expand-Archive читают UTF-8 при любой кодировке.
+ */
+function tarReadsCyrillic(): boolean {
+  const out = execFileSync('reg', ['query', 'HKLM\\SYSTEM\\CurrentControlSet\\Control\\Nls\\CodePage', '/v', 'ACP'], { encoding: 'utf8' })
+  return ['1251', '65001'].includes(/ACP\s+REG_SZ\s+(\d+)/.exec(out)?.[1] ?? '')
+}
+
+const sample = (n: Names = RU): ZipEntry[] => {
   const big = Buffer.alloc(300 * 1024)
   for (let i = 0; i < big.length; i++) big[i] = (i * 31) % 251
   const file = (name: string, data: Buffer): ZipEntry => ({
@@ -98,11 +113,11 @@ const sample = (): ZipEntry[] => {
     }
   })
   return [
-    { name: 'сайт', dir: true, mtime: 1_764_000_000, mode: 0o040755, size: 0 },
-    file('сайт/index.html', Buffer.from('<h1>Привет</h1>\n')),
-    file('сайт/пустой.txt', Buffer.alloc(0)),
-    { name: 'сайт/logs', dir: true, mtime: 1_764_000_000, mode: 0o040755, size: 0 },
-    file('сайт/logs/big.bin', big),
+    { name: n.site, dir: true, mtime: 1_764_000_000, mode: 0o040755, size: 0 },
+    file(`${n.site}/index.html`, Buffer.from('<h1>Привет</h1>\n')),
+    file(`${n.site}/${n.empty}`, Buffer.alloc(0)),
+    { name: `${n.site}/logs`, dir: true, mtime: 1_764_000_000, mode: 0o040755, size: 0 },
+    file(`${n.site}/logs/big.bin`, big),
     file('readme.md', Buffer.from('# ok\n'))
   ]
 }
@@ -130,10 +145,10 @@ describe('потоковый ZIP', () => {
   })
 
   describe.skipIf(!isWindows)('распаковка средствами Windows', () => {
-    const check = (outDir: string) => {
-      expect(readFileSync(join(outDir, 'сайт', 'index.html'), 'utf8')).toBe('<h1>Привет</h1>\n')
-      expect(readFileSync(join(outDir, 'сайт', 'пустой.txt')).length).toBe(0)
-      expect(readFileSync(join(outDir, 'сайт', 'logs', 'big.bin')).length).toBe(300 * 1024)
+    const check = (outDir: string, n: Names) => {
+      expect(readFileSync(join(outDir, n.site, 'index.html'), 'utf8')).toBe('<h1>Привет</h1>\n')
+      expect(readFileSync(join(outDir, n.site, n.empty)).length).toBe(0)
+      expect(readFileSync(join(outDir, n.site, 'logs', 'big.bin')).length).toBe(300 * 1024)
       expect(readFileSync(join(outDir, 'readme.md'), 'utf8')).toBe('# ok\n')
     }
 
@@ -141,17 +156,21 @@ describe('потоковый ZIP', () => {
       ['обычный', undefined],
       ['ZIP64', 1]
     ] as const) {
-      it(`${label}: tar и Expand-Archive`, async () => {
+      it(`${label}: Expand-Archive и tar`, async () => {
         const dir = temp('termion-zip-')
         const zipPath = join(dir, 'archive.zip')
         writeFileSync(zipPath, await collect(zipStream(sample(), { zip64Threshold: threshold })))
-        const byTar = join(dir, 'tar')
-        mkdirSync(byTar)
-        execFileSync('C:\\Windows\\System32\\tar.exe', ['-xf', zipPath, '-C', byTar])
-        check(byTar)
         const byPs = join(dir, 'ps')
         execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', `Expand-Archive -LiteralPath '${zipPath}' -DestinationPath '${byPs}'`])
-        check(byPs)
+        check(byPs, RU)
+
+        const names = tarReadsCyrillic() ? RU : LATIN
+        const tarZip = join(dir, 'tar.zip')
+        writeFileSync(tarZip, await collect(zipStream(sample(names), { zip64Threshold: threshold })))
+        const byTar = join(dir, 'tar')
+        mkdirSync(byTar)
+        execFileSync('C:\\Windows\\System32\\tar.exe', ['-xf', tarZip, '-C', byTar])
+        check(byTar, names)
       }, 60_000)
     }
 
